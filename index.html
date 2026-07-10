@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Quản Lý Tồn Kho NVL v2.3 - TOYOTAKI</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #C87941;
+            --dark: #1a1a1a;
+            --light: #f5f3f0;
+            --gray: #999;
+            --success: #4CAF50;
+            --warning: #FFC107;
+            --danger: #f44336;
+            --border: #ddd;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .header {
+            background: var(--dark);
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .header-brand {
+            font-size: 0.85rem;
+            color: var(--primary);
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 0.8rem 1.2rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--gray);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--primary);
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(200, 121, 65, 0.1);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #b56b3a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(200, 121, 65, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: var(--dark);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #e8e8e8;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-top: 3px solid var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin-bottom: 1rem;
+        }
+
+        /* ===== TAB TỔNG QUAN: GRID 7 THẺ KHÔNG SCROLL ===== */
+        #overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .overview-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            border-top: 3px solid var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .overview-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .overview-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .overview-card-code {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-ok {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(255, 193, 7, 0.1);
+            color: #F57F17;
+        }
+
+        .overview-card-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .stat-small {
+            background: #f9f9f9;
+            padding: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--gray);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .data-table th {
+            background: #f5f5f5;
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray);
+            border-bottom: 2px solid var(--border);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .material-btns {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .material-btn {
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .material-btn:hover {
+            border-color: var(--primary);
+            background: rgba(200, 121, 65, 0.05);
+        }
+
+        .material-btn.active {
+            border-color: var(--primary);
+            background: rgba(200, 121, 65, 0.1);
+            color: var(--primary);
+        }
+
+        /* Score Card 3 ô */
+        .score-card {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .score-item {
+            background: linear-gradient(135deg, #f5f3f0 0%, #f9f9f9 100%);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            text-align: center;
+        }
+
+        .score-item-label {
+            font-size: 0.85rem;
+            color: var(--gray);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .score-item-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .score-item-unit {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .alert-info {
+            background: rgba(33, 150, 243, 0.1);
+            color: #1976D2;
+            border-left: 4px solid #1976D2;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                height: 250px;
+            }
+
+            .material-btns {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .score-card {
+                grid-template-columns: 1fr;
+            }
+
+            #overview-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <div class="header-title">Quản Lý Tồn Kho NVL v2.3</div>
+            <div class="header-brand">TOYOTAKI — DIE CASTING</div>
+        </div>
+        <div style="text-align: right; font-size: 0.9rem; color: #999;">
+            <div id="current-date"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(event, 'overview')">📊 Tổng Quan</button>
+            <button class="tab-btn" onclick="switchTab(event, 'charts')">📈 Biểu Đồ Chi Tiết</button>
+            <button class="tab-btn" onclick="switchTab(event, 'import-plan')">📅 Kế Hoạch</button>
+            <button class="tab-btn" onclick="switchTab(event, 'qr-input')">📱 Nhập/Xuất (QR)</button>
+            <button class="tab-btn" onclick="switchTab(event, 'settings')">⚙️ Cài Đặt</button>
+            <button class="tab-btn" onclick="switchTab(event, 'data')">📋 Dữ Liệu</button>
+        </div>
+
+        <!-- Tab 1: Tổng Quan -->
+        <div id="overview" class="tab-content active">
+            <div id="overview-grid"></div>
+        </div>
+
+        <!-- Tab 2: Biểu Đồ Chi Tiết -->
+        <div id="charts" class="tab-content">
+            <div class="section">
+                <div class="section-title">Chọn Loại NVL</div>
+                <div class="material-btns" id="materialButtonsContainer"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    Biểu Đồ 30 Ngày Gần Nhất
+                    <span id="chartMaterialLabel" style="font-size: 0.9rem; color: var(--primary); margin-left: 1rem;">ADC12-CHT</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Kế Hoạch -->
+        <div id="import-plan" class="tab-content">
+            <div class="section">
+                <div class="section-title">📅 Nhập Kế Hoạch Sử Dụng NVL</div>
+                <div class="alert alert-info">
+                    💡 Nhập ngày dự kiến hết NVL + Tồn kế hoạch hiện tại cho từng loại
+                </div>
+
+                <table class="data-table" style="margin-top: 1rem;">
+                    <thead>
+                        <tr>
+                            <th>Mã NVL</th>
+                            <th>Ngày Hết Dự Kiến</th>
+                            <th>Tồn Kế Hoạch (Tấn)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="planInputTable"></tbody>
+                </table>
+
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="savePlanData()">💾 Lưu Kế Hoạch</button>
+                    <button class="btn-secondary" onclick="exportPlanTemplate()">📥 Tải Template Excel</button>
+                    <button class="btn-secondary" onclick="document.getElementById('excelFileInput').click()">📤 Import Excel</button>
+                </div>
+                <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display: none;" onchange="importPlanExcel(event)">
+            </div>
+
+            <div class="card">
+                <div class="card-title">Kế Hoạch Đã Lưu</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Mã NVL</th>
+                            <th>Ngày Hết Dự Kiến</th>
+                            <th>Tồn Kế Hoạch (Tấn)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="planDataTable">
+                        <tr><td colspan="3" style="text-align: center; color: var(--gray);">Chưa có kế hoạch</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 4: QR Input -->
+        <div id="qr-input" class="tab-content">
+            <div class="section">
+                <div class="section-title">📱 Vùng Quét QR Code</div>
+                <div class="alert alert-info">
+                    💡 Quét QR Code: Tag No > Mã NVL > Tên NVL > Ngày > Khối Lượng
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Quét QR Code</label>
+                        <input type="text" id="qrInput" placeholder="Quét QR code tại đây..." autofocus onchange="parseQRCode()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Thông Tin Ghi Nhận</div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ngày</label>
+                        <input type="date" id="txDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Loại Giao Dịch</label>
+                        <select id="txType" onchange="updateScoreCard()">
+                            <option value="IN">📥 Nhập</option>
+                            <option value="OUT">📤 Xuất</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Mã NVL</label>
+                        <select id="txMaterial" onchange="updateScoreCard()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Khối Lượng (Tấn)</label>
+                        <input type="number" id="txQuantity" step="0.1" min="0" placeholder="0.0" onchange="updateScoreCard()">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Ghi Chú</label>
+                        <textarea id="txComment" rows="2" placeholder="Ghi chú thêm..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Score Card 3 ô -->
+                <div class="score-card">
+                    <div class="score-item">
+                        <div class="score-item-label">Tồn Hiện Tại</div>
+                        <div class="score-item-value" id="scoreCurrentStock">0.00</div>
+                        <div class="score-item-unit">Tấn</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-item-label">Sau Giao Dịch</div>
+                        <div class="score-item-value" id="scoreAfterTx">0.00</div>
+                        <div class="score-item-unit">Tấn</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-item-label">Tồn Kế Hoạch</div>
+                        <div class="score-item-value" id="scorePlanStock">0.00</div>
+                        <div class="score-item-unit">Tấn</div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="addTransaction()">✓ Ghi Nhận</button>
+                    <button class="btn-secondary" onclick="resetTransactionForm()">⟲ Đặt Lại</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Lịch Sử Giao Dịch</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Ngày</th>
+                            <th>Loại</th>
+                            <th>Mã NVL</th>
+                            <th>Khối Lượng (Tấn)</th>
+                            <th>Tồn Sau (Tấn)</th>
+                            <th>Ghi Chú</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionHistoryTable">
+                        <tr><td colspan="6" style="text-align: center; color: var(--gray);">Chưa có giao dịch</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 5: Cài Đặt -->
+        <div id="settings" class="tab-content">
+            <div class="section">
+                <div class="section-title">⚙️ Cài Đặt Bề Rộng Quản Lý (Per-NVL)</div>
+                <div class="alert alert-info">
+                    💡 Mỗi loại NVL có bề rộng quản lý khác nhau. LSL/USL sẽ tính riêng cho từng mã.
+                </div>
+
+                <table class="data-table" style="margin-top: 1rem;">
+                    <thead>
+                        <tr>
+                            <th>Mã NVL</th>
+                            <th>Bề Rộng Quản Lý (Tấn)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="settingsTable"></tbody>
+                </table>
+
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="saveAllSettings()">💾 Lưu Tất Cả</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 6: Dữ Liệu -->
+        <div id="data" class="tab-content">
+            <div class="section">
+                <div class="section-title">Quản Lý Dữ Liệu</div>
+                <div class="btn-group">
+                    <button class="btn-secondary" onclick="exportAllData()">📥 Xuất JSON</button>
+                    <button class="btn-secondary" onclick="document.getElementById('importDataFile').click()">📤 Nhập JSON</button>
+                    <button class="btn-danger" onclick="clearAllData()" style="background: #f44336; color: white;">🗑️ Xóa Tất Cả</button>
+                </div>
+                <input type="file" id="importDataFile" accept=".json" style="display: none;" onchange="importAllData(event)">
+            </div>
+
+            <div class="card">
+                <div class="card-title">Thông Tin</div>
+                <div id="dataInfo" style="font-size: 0.9rem; line-height: 1.8;">
+                    <p>📊 Tổng giao dịch: <strong id="totalTransactions">0</strong></p>
+                    <p>💾 Dung lượng: <strong id="dataSize">0 KB</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MATERIALS = [
+            { code: 'ADC12-DAK', name: 'Nhôm ADC12 - DAK' },
+            { code: 'HD2-HDT', name: 'Kẽm HD2 - HDT' },
+            { code: 'ADC12-CHT', name: 'Nhôm ADC12 - CHT' },
+            { code: 'ADC12-TAQ', name: 'Nhôm ADC12 - TAQ' },
+            { code: 'ADC6-CHT', name: 'Nhôm ADC6 - CHT' },
+            { code: 'EZDA3-HDT', name: 'Kẽm EZDA3 - HDT' },
+            { code: 'EZDA3-MET', name: 'Kẽm EZDA3 - MET' }
+        ];
+
+        let currentMaterial = 'ADC12-CHT';
+        let allData = {
+            plans: {},
+            transactions: [],
+            currentStock: {}
+        };
+        let settings = {};
+        let charts = {};
+
+        // Initialize
+        function init() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('txDate').value = today;
+            updateDate();
+            loadData();
+            loadSettings();
+            initializeMaterials();
+            renderOverview();
+            renderMaterialButtons();
+            renderPlanInputTable();
+            renderPlanDataTable();
+            renderSettingsTable();
+            renderTransactionHistory();
+            updateScoreCard();
+        }
+
+        function updateDate() {
+            const today = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = today.toLocaleDateString('vi-VN', options);
+        }
+
+        function initializeMaterials() {
+            const txMaterialSelect = document.getElementById('txMaterial');
+            txMaterialSelect.innerHTML = '';
+            MATERIALS.forEach(material => {
+                const option = document.createElement('option');
+                option.value = material.code;
+                option.textContent = material.code;
+                txMaterialSelect.appendChild(option);
+            });
+        }
+
+        function loadData() {
+            const stored = localStorage.getItem('tonKhoDataV2');
+            if (stored) {
+                allData = JSON.parse(stored);
+            } else {
+                MATERIALS.forEach(m => {
+                    allData.plans[m.code] = {
+                        endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+                        current: 50,
+                        updated: new Date().toISOString()
+                    };
+                    allData.currentStock[m.code] = 50;
+                });
+            }
+        }
+
+        function loadSettings() {
+            const stored = localStorage.getItem('tonKhoSettingsV2');
+            if (stored) {
+                settings = JSON.parse(stored);
+            } else {
+                MATERIALS.forEach(m => {
+                    settings[m.code] = 5; // Default 5 tấn
+                });
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('tonKhoDataV2', JSON.stringify(allData));
+        }
+
+        function saveSettings() {
+            localStorage.setItem('tonKhoSettingsV2', JSON.stringify(settings));
+        }
+
+        // TAB TỔNG QUAN
+        function renderOverview() {
+            const container = document.getElementById('overview-grid');
+            container.innerHTML = '';
+
+            MATERIALS.forEach(material => {
+                const stock = allData.currentStock[material.code] || 0;
+                const plan = allData.plans[material.code]?.current || 50;
+                const bw = settings[material.code] || 5;
+                const lsl = plan - bw;
+                const usl = plan + bw;
+                const status = stock >= lsl && stock <= usl ? 'ok' : 'warning';
+                const statusText = status === 'ok' ? '✓ Bình Thường' : '⚠ Cảnh Báo';
+
+                const card = document.createElement('div');
+                card.className = 'overview-card';
+                card.onclick = () => {
+                    currentMaterial = material.code;
+                    switchTab(null, 'charts');
+                    updateCharts();
+                    renderMaterialButtons();
+                };
+
+                card.innerHTML = `
+                    <div class="overview-card-header">
+                        <div class="overview-card-code">${material.code}</div>
+                        <span class="badge badge-${status}">${statusText}</span>
+                    </div>
+                    <div class="overview-card-stats">
+                        <div class="stat-small">
+                            <div class="stat-label">Tồn Thực Tế</div>
+                            <div class="stat-value" style="color: var(--primary);">${stock.toFixed(2)}</div>
+                        </div>
+                        <div class="stat-small">
+                            <div class="stat-label">Kế Hoạch</div>
+                            <div class="stat-value">${plan.toFixed(2)}</div>
+                        </div>
+                        <div class="stat-small">
+                            <div class="stat-label">LSL</div>
+                            <div class="stat-value" style="font-size: 1rem; color: var(--warning);">${lsl.toFixed(1)}</div>
+                        </div>
+                        <div class="stat-small">
+                            <div class="stat-label">USL</div>
+                            <div class="stat-value" style="font-size: 1rem; color: var(--warning);">${usl.toFixed(1)}</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // TAB BIỂU ĐỒ CHI TIẾT
+        function renderMaterialButtons() {
+            const container = document.getElementById('materialButtonsContainer');
+            container.innerHTML = '';
+
+            MATERIALS.forEach(material => {
+                const btn = document.createElement('button');
+                btn.className = 'material-btn' + (currentMaterial === material.code ? ' active' : '');
+                btn.textContent = material.code;
+                btn.onclick = () => {
+                    currentMaterial = material.code;
+                    renderMaterialButtons();
+                    updateCharts();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function updateCharts() {
+            document.getElementById('chartMaterialLabel').textContent = currentMaterial;
+            updateComparisonChart();
+        }
+
+        function updateComparisonChart() {
+            const plan = allData.plans[currentMaterial]?.current || 50;
+            const bw = settings[currentMaterial] || 5;
+            const lsl = plan - bw;
+            const usl = plan + bw;
+            const relevantTx = allData.transactions.filter(t => t.material === currentMaterial);
+
+            // Filter 30 ngày gần nhất
+            const now = new Date();
+            const thirtyDaysAgo = new Date(now.getTime() - 30*24*60*60*1000);
+
+            const dateMap = {};
+            relevantTx.forEach(tx => {
+                const txDate = new Date(tx.date);
+                if (txDate >= thirtyDaysAgo && txDate <= now) {
+                    if (!dateMap[tx.date]) {
+                        dateMap[tx.date] = { in: 0, out: 0 };
+                    }
+                    if (tx.type === 'IN') dateMap[tx.date].in += tx.quantity;
+                    else dateMap[tx.date].out += tx.quantity;
+                }
+            });
+
+            const dates = Object.keys(dateMap).sort();
+            const labels = dates.map(d => {
+                const date = new Date(d);
+                return date.toLocaleDateString('vi-VN', { month: '2-digit', day: '2-digit' });
+            });
+
+            let cumStock = plan;
+            const stockData = [cumStock];
+            dates.forEach(date => {
+                const tx = dateMap[date];
+                cumStock += tx.in - tx.out;
+                stockData.push(cumStock);
+            });
+
+            const ctx = document.getElementById('comparisonChart');
+            if (charts.comparison) charts.comparison.destroy();
+
+            charts.comparison = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Đầu', ...labels],
+                    datasets: [
+                        {
+                            label: 'Tồn Kế Hoạch',
+                            data: Array(labels.length + 1).fill(plan),
+                            borderColor: '#999999',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [3, 3],
+                            tension: 0,
+                            fill: false,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'LSL',
+                            data: Array(labels.length + 1).fill(lsl),
+                            borderColor: '#E07B39',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [5, 5],
+                            tension: 0,
+                            fill: false,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'USL',
+                            data: Array(labels.length + 1).fill(usl),
+                            borderColor: '#E07B39',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [5, 5],
+                            tension: 0,
+                            fill: false,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Tồn Thực Tế',
+                            data: stockData,
+                            borderColor: '#1F4E78',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2.5,
+                            tension: 0.3,
+                            fill: false,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#1F4E78',
+                            pointBorderColor: 'white',
+                            pointBorderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            display: true,
+                            position: 'bottom'
+                        }
+                    },
+                    scales: { 
+                        y: { 
+                            beginAtZero: true,
+                            max: Math.max(...stockData, usl) + 10
+                        }
+                    }
+                }
+            });
+        }
+
+        // TAB KỀ HOẠCH
+        function renderPlanInputTable() {
+            const tbody = document.getElementById('planInputTable');
+            tbody.innerHTML = '';
+
+            MATERIALS.forEach(material => {
+                const plan = allData.plans[material.code];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${material.code}</strong></td>
+                    <td>
+                        <input type="date" class="plan-date-${material.code}" value="${plan?.endDate || ''}" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    </td>
+                    <td>
+                        <input type="number" class="plan-stock-${material.code}" value="${plan?.current || 50}" step="0.1" min="0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderPlanDataTable() {
+            const tbody = document.getElementById('planDataTable');
+            tbody.innerHTML = '';
+
+            MATERIALS.forEach(material => {
+                const plan = allData.plans[material.code];
+                const row = document.createElement('tr');
+                const endDate = plan?.endDate ? new Date(plan.endDate).toLocaleDateString('vi-VN') : 'Chưa lập';
+                row.innerHTML = `
+                    <td><strong>${material.code}</strong></td>
+                    <td>${endDate}</td>
+                    <td>${plan?.current.toFixed(2) || '0.00'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function savePlanData() {
+            MATERIALS.forEach(material => {
+                const endDate = document.querySelector(`.plan-date-${material.code}`).value;
+                const current = parseFloat(document.querySelector(`.plan-stock-${material.code}`).value) || 0;
+                
+                allData.plans[material.code] = {
+                    endDate: endDate || new Date().toISOString().split('T')[0],
+                    current,
+                    updated: new Date().toISOString()
+                };
+                allData.currentStock[material.code] = current;
+            });
+
+            saveData();
+            renderPlanDataTable();
+            renderOverview();
+            alert('✓ Kế hoạch đã được lưu');
+        }
+
+        function exportPlanTemplate() {
+            const ws_data = [['Mã NVL', 'Ngày Hết Dự Kiến', 'Tồn Kế Hoạch (Tấn)']];
+            MATERIALS.forEach(material => {
+                const plan = allData.plans[material.code];
+                ws_data.push([
+                    material.code,
+                    plan?.endDate || '',
+                    plan?.current || 0
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Kế Hoạch');
+            XLSX.writeFile(wb, `template-ke-hoach-nvl-${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        function importPlanExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+
+                    json.forEach(row => {
+                        const code = row['Mã NVL'] || row['Code'];
+                        const endDate = row['Ngày Hết Dự Kiến'] || row['End Date'];
+                        const current = parseFloat(row['Tồn Kế Hoạch (Tấn)'] || row['Stock']);
+
+                        const material = MATERIALS.find(m => m.code === code);
+                        if (material) {
+                            allData.plans[code] = { 
+                                endDate: endDate || new Date().toISOString().split('T')[0], 
+                                current, 
+                                updated: new Date().toISOString() 
+                            };
+                            allData.currentStock[code] = current;
+                        }
+                    });
+
+                    saveData();
+                    renderPlanInputTable();
+                    renderPlanDataTable();
+                    renderOverview();
+                    alert('✓ Import thành công');
+                } catch (err) {
+                    alert('Lỗi: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // TAB QR & GIAO DỊCH
+        function parseQRCode() {
+            const qrText = document.getElementById('qrInput').value.trim();
+            if (!qrText) return;
+
+            // Format: Tag No>Mã NVL>Tên NVL>Ngày>Khối Lượng
+            const parts = qrText.split('>');
+            if (parts.length >= 5) {
+                const tagNo = parts[0].trim();
+                const materialCode = parts[1].trim();
+                const materialName = parts[2].trim();
+                const ngayStr = parts[3].trim();
+                const khoiLuong = parseFloat(parts[4].trim());
+
+                document.getElementById('txDate').value = ngayStr || new Date().toISOString().split('T')[0];
+                document.getElementById('txMaterial').value = materialCode;
+                document.getElementById('txQuantity').value = khoiLuong || 0;
+                document.getElementById('txComment').value = `[QR] Tag: ${tagNo}, ${materialName}`;
+
+                document.getElementById('qrInput').value = '';
+                updateScoreCard();
+            }
+        }
+
+        function updateScoreCard() {
+            const material = document.getElementById('txMaterial').value;
+            const txType = document.getElementById('txType').value;
+            const quantity = parseFloat(document.getElementById('txQuantity').value) || 0;
+
+            const currentStock = allData.currentStock[material] || 0;
+            const planStock = allData.plans[material]?.current || 50;
+
+            let afterStock = currentStock;
+            if (txType === 'IN') {
+                afterStock = currentStock + quantity;
+            } else {
+                afterStock = Math.max(0, currentStock - quantity);
+            }
+
+            document.getElementById('scoreCurrentStock').textContent = currentStock.toFixed(2);
+            document.getElementById('scoreAfterTx').textContent = afterStock.toFixed(2);
+            document.getElementById('scorePlanStock').textContent = planStock.toFixed(2);
+        }
+
+        function addTransaction() {
+            const date = document.getElementById('txDate').value;
+            const type = document.getElementById('txType').value;
+            const material = document.getElementById('txMaterial').value;
+            const quantity = parseFloat(document.getElementById('txQuantity').value);
+            const comment = document.getElementById('txComment').value;
+
+            if (!date || isNaN(quantity) || quantity <= 0) {
+                alert('Vui lòng điền đầy đủ thông tin');
+                return;
+            }
+
+            let currentStock = allData.currentStock[material] || 0;
+            if (type === 'IN') {
+                currentStock += quantity;
+            } else {
+                currentStock = Math.max(0, currentStock - quantity);
+            }
+            allData.currentStock[material] = currentStock;
+
+            allData.transactions.push({
+                date,
+                type,
+                material,
+                quantity,
+                comment,
+                afterStock: currentStock,
+                timestamp: new Date().toISOString()
+            });
+
+            saveData();
+            renderTransactionHistory();
+            renderOverview();
+            updateScoreCard();
+            resetTransactionForm();
+            alert('✓ Ghi nhận giao dịch thành công');
+        }
+
+        function resetTransactionForm() {
+            document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('txQuantity').value = '';
+            document.getElementById('txComment').value = '';
+            document.getElementById('qrInput').value = '';
+            updateScoreCard();
+        }
+
+        function renderTransactionHistory() {
+            const tbody = document.getElementById('transactionHistoryTable');
+            tbody.innerHTML = '';
+
+            if (allData.transactions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--gray);">Chưa có giao dịch</td></tr>';
+                return;
+            }
+
+            allData.transactions.slice().reverse().forEach(tx => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${new Date(tx.date).toLocaleDateString('vi-VN')}</td>
+                    <td>${tx.type === 'IN' ? '📥 Nhập' : '📤 Xuất'}</td>
+                    <td><strong>${tx.material}</strong></td>
+                    <td>${tx.quantity.toFixed(2)}</td>
+                    <td style="color: var(--primary); font-weight: 600;">${tx.afterStock.toFixed(2)}</td>
+                    <td>${tx.comment || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // TAB CÀI ĐẶT
+        function renderSettingsTable() {
+            const tbody = document.getElementById('settingsTable');
+            tbody.innerHTML = '';
+
+            MATERIALS.forEach(material => {
+                const width = settings[material.code] || 5;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${material.code}</strong></td>
+                    <td>
+                        <input type="number" class="setting-${material.code}" value="${width}" step="0.1" min="0.1" max="50" style="width: 120px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function saveAllSettings() {
+            MATERIALS.forEach(material => {
+                const width = parseFloat(document.querySelector(`.setting-${material.code}`).value) || 5;
+                settings[material.code] = width;
+            });
+
+            saveSettings();
+            renderOverview();
+            updateCharts();
+            alert('✓ Cài đặt đã được lưu');
+        }
+
+        // TAB DỮ LIỆU
+        function exportAllData() {
+            const dataStr = JSON.stringify(allData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ton-kho-nvl-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+
+        function importAllData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    allData = JSON.parse(e.target.result);
+                    saveData();
+                    renderOverview();
+                    renderTransactionHistory();
+                    alert('✓ Import thành công');
+                } catch (err) {
+                    alert('Lỗi: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ Xóa TẤT CẢ dữ liệu? Không thể hoàn tác!')) {
+                allData = { plans: {}, transactions: [], currentStock: {} };
+                MATERIALS.forEach(m => {
+                    allData.plans[m.code] = { endDate: '', current: 50, updated: new Date().toISOString() };
+                    allData.currentStock[m.code] = 50;
+                });
+                saveData();
+                renderOverview();
+                renderTransactionHistory();
+                alert('✓ Dữ liệu đã xóa');
+            }
+        }
+
+        // UTILS
+        function switchTab(event, tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+            if (event) event.target.classList.add('active');
+
+            if (tabName === 'charts') {
+                setTimeout(() => updateCharts(), 100);
+            }
+        }
+
+        // Init
+        init();
+        renderTransactionHistory();
+    </script>
+</body>
+</html>
