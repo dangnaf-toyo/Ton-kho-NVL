@@ -62,10 +62,18 @@
         .material-btn:hover { border-color: var(--primary); }
         .material-btn.active { border-color: var(--primary); background: rgba(200, 121, 65, 0.1); color: var(--primary); }
         .score-card { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
-        .score-item { background: linear-gradient(135deg, #f5f3f0 0%, #f9f9f9 100%); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--border); text-align: center; }
+        .score-item { background: linear-gradient(135deg, #f5f3f0 0%, #f9f9f9 100%); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--border); text-align: center; transition: all 0.3s ease; }
         .score-item-label { font-size: 0.8rem; color: var(--gray); text-transform: uppercase; font-weight: 600; margin-bottom: 0.75rem; }
         .score-item-value { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
         .score-item-unit { font-size: 0.8rem; color: var(--gray); }
+        /* Trạng thái bình thường: nền xanh nhạt, chữ xanh */
+        .score-item.normal { background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%); border-color: var(--success); }
+        .score-item.normal .score-item-value { color: var(--success); }
+        .score-item.normal .score-item-label { color: var(--success); }
+        /* Trạng thái bất thường: nền cam, chữ đỏ */
+        .score-item.abnormal { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-color: var(--danger); }
+        .score-item.abnormal .score-item-value { color: var(--danger); }
+        .score-item.abnormal .score-item-label { color: var(--danger); }
         .alert { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; }
         .alert-info { background: rgba(33, 150, 243, 0.1); color: #1976D2; border-left: 4px solid #1976D2; }
         .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
@@ -179,8 +187,8 @@
                         <div class="score-item-unit">Tấn</div>
                     </div>
                     <div class="score-item">
-                        <div class="score-item-label">Tồn Kế Hoạch Hôm Nay</div>
-                        <div class="score-item-value" id="scorePlanStock">0.00</div>
+                        <div class="score-item-label">Khoảng LSL - USL</div>
+                        <div class="score-item-value" id="scorePlanStock" style="font-size: 1.3rem;">0.00 - 0.00</div>
                         <div class="score-item-unit">Tấn</div>
                     </div>
                 </div>
@@ -317,71 +325,47 @@
         }
 
         // ===== TÍNH TỒN THỰC TẾ THEO NGÀY =====
-        // Trả về mảng tồn thực tế cho từng ngày trong plan.dates
-        // Logic: Bắt đầu từ tồn đầu kỳ, cộng dồn nhập/xuất từ giao dịch
+        // Logic đơn giản:
+        //   Cho mỗi ngày D trong biểu đồ:
+        //     - Nếu D < openingDate → null (chưa có mốc)
+        //     - Nếu D > today → null (chưa xảy ra)
+        //     - Ngược lại: Tồn(D) = openingStock + Σ(nhập-xuất) của tất cả tx từ openingDate đến D (bao gồm cả D)
         function calculateActualStockByDate(materialCode, planDates) {
             const opening = allData.opening[materialCode];
             if (!opening || !opening.openingDate) {
-                return planDates.map(() => null); // Không có tồn đầu kỳ
+                console.log(`[${materialCode}] Không có tồn đầu kỳ`);
+                return planDates.map(() => null);
             }
 
             const openingDate = opening.openingDate;
-            const openingStock = opening.openingStock || 0;
+            const openingStock = parseFloat(opening.openingStock) || 0;
+            const today = new Date().toISOString().split('T')[0];
 
-            // Lọc giao dịch của mã NVL này
+            // Lọc và sort tất cả giao dịch của mã NVL này từ ngày đầu kỳ trở đi
             const txs = allData.transactions
                 .filter(tx => tx.material === materialCode)
                 .filter(tx => tx.date >= openingDate)
                 .sort((a, b) => a.date.localeCompare(b.date));
 
-            // Group giao dịch theo ngày: { "2026-07-04": {in: 5, out: 0}, ... }
-            const dailyDelta = {};
-            txs.forEach(tx => {
-                if (!dailyDelta[tx.date]) dailyDelta[tx.date] = { in: 0, out: 0 };
-                if (tx.type === 'IN') dailyDelta[tx.date].in += tx.quantity;
-                else dailyDelta[tx.date].out += tx.quantity;
-            });
+            console.log(`[${materialCode}] Opening: ${openingDate}=${openingStock}, Txs từ đầu kỳ: ${txs.length}`);
 
-            const today = new Date().toISOString().split('T')[0];
+            // Tính tồn cho từng ngày
+            const result = planDates.map(chartDate => {
+                if (chartDate < openingDate) return null;
+                if (chartDate > today) return null;
 
-            // Cho từng ngày trong biểu đồ: tính tồn = openingStock + Σ(nhập-xuất) từ opening đến ngày đó
-            let cumulative = openingStock;
-            const result = [];
-            
-            // Nếu ngày đầu biểu đồ < ngày đầu kỳ → không vẽ (null)
-            // Nếu ngày trong biểu đồ >= ngày đầu kỳ → tính cộng dồn
-            // Nếu ngày > today → không vẽ (null)
-
-            // Trước tiên: tính cumulative TỚI ngày đầu tiên trong biểu đồ
-            const firstChartDate = planDates[0];
-            
-            if (firstChartDate > openingDate) {
-                // Cần cộng dồn từ openingDate → firstChartDate - 1
-                Object.keys(dailyDelta).forEach(d => {
-                    if (d >= openingDate && d < firstChartDate) {
-                        cumulative += dailyDelta[d].in - dailyDelta[d].out;
+                // Cộng dồn TẤT CẢ giao dịch có date <= chartDate
+                let stock = openingStock;
+                for (const tx of txs) {
+                    if (tx.date <= chartDate) {
+                        const qty = parseFloat(tx.quantity) || 0;
+                        if (tx.type === 'IN') stock += qty;
+                        else stock -= qty;
+                    } else {
+                        break; // txs đã sort, không cần xét tiếp
                     }
-                });
-            }
-
-            // Duyệt từng ngày trong biểu đồ
-            planDates.forEach(d => {
-                if (d < openingDate) {
-                    result.push(null); // Ngày trước tồn đầu kỳ
-                } else if (d > today) {
-                    result.push(null); // Tương lai
-                } else {
-                    // Cộng delta của ngày này (nếu có)
-                    if (d > firstChartDate && dailyDelta[d]) {
-                        cumulative += dailyDelta[d].in - dailyDelta[d].out;
-                    } else if (d === firstChartDate) {
-                        // Ngày đầu biểu đồ: đã tính cumulative ở trên, cộng thêm delta nếu có
-                        if (d >= openingDate && dailyDelta[d]) {
-                            cumulative += dailyDelta[d].in - dailyDelta[d].out;
-                        }
-                    }
-                    result.push(cumulative);
                 }
+                return stock;
             });
 
             return result;
@@ -425,8 +409,8 @@
                 const usl = planToday + bw;
 
                 let status, statusText;
-                if (stock < lsl) { status = 'danger'; statusText = '⚠ Dưới LSL'; }
-                else if (stock > usl) { status = 'warning'; statusText = '⚠ Trên USL'; }
+                if (stock < lsl) { status = 'danger'; statusText = '⚠ Tồn kho thấp'; }
+                else if (stock > usl) { status = 'warning'; statusText = '⚠ Tồn kho cao'; }
                 else { status = 'ok'; statusText = '✓ Bình Thường'; }
 
                 const card = document.createElement('div');
@@ -620,12 +604,28 @@
             const quantity = parseFloat(document.getElementById('txQuantity').value) || 0;
             const currentStock = getCurrentActualStock(material);
             const planToday = getPlanTodayForMaterial(material);
+            const bw = allData.settings[material] || 5;
+            const lsl = planToday - bw;
+            const usl = planToday + bw;
+
             let afterStock = currentStock;
             if (txType === 'IN') afterStock = currentStock + quantity;
             else afterStock = Math.max(0, currentStock - quantity);
+
             document.getElementById('scoreCurrentStock').textContent = currentStock.toFixed(3);
             document.getElementById('scoreAfterTx').textContent = afterStock.toFixed(3);
-            document.getElementById('scorePlanStock').textContent = planToday.toFixed(3);
+            document.getElementById('scorePlanStock').textContent = lsl.toFixed(2) + ' - ' + usl.toFixed(2);
+
+            // Đổi màu ô "Sau Giao Dịch" theo trạng thái
+            const afterEl = document.getElementById('scoreAfterTx').closest('.score-item');
+            afterEl.classList.remove('normal', 'abnormal');
+            if (quantity > 0) {
+                if (afterStock >= lsl && afterStock <= usl) {
+                    afterEl.classList.add('normal');
+                } else {
+                    afterEl.classList.add('abnormal');
+                }
+            }
         }
 
         async function submitTransaction() {
