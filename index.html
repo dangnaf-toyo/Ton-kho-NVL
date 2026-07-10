@@ -76,6 +76,24 @@
         .score-item.abnormal .score-item-label { color: var(--danger); }
         .alert { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; }
         .alert-info { background: rgba(33, 150, 243, 0.1); color: #1976D2; border-left: 4px solid #1976D2; }
+        /* Bảng kế hoạch nhập nhôm - có scroll ngang */
+        .plan-nhap-wrapper { overflow-x: auto; margin-top: 1rem; border: 1px solid var(--border); border-radius: 6px; }
+        .plan-nhap-table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .plan-nhap-table th, .plan-nhap-table td { border: 1px solid #eee; padding: 0.4rem; text-align: center; }
+        .plan-nhap-table thead th { background: #1F4E78; color: white; font-weight: 600; position: sticky; top: 0; z-index: 5; font-size: 0.75rem; }
+        .plan-nhap-table thead .weekend { background: #f57c00; }
+        .plan-nhap-table thead .today-col { background: #C87941; }
+        .plan-nhap-table tbody td.material-cell { background: #f5f5f5; font-weight: 700; color: var(--blue); text-align: left; padding-left: 0.75rem; position: sticky; left: 0; z-index: 4; min-width: 120px; }
+        .plan-nhap-table tbody tr:nth-child(even) td:not(.material-cell) { background: #fafafa; }
+        .plan-nhap-table tbody td.weekend-col { background: #fff3e0 !important; }
+        .plan-nhap-table tbody td.today-col { background: #ffe0b2 !important; }
+        .plan-nhap-input { width: 60px; padding: 0.3rem; border: 1px solid transparent; background: transparent; text-align: center; font-size: 0.85rem; font-family: inherit; border-radius: 3px; }
+        .plan-nhap-input:hover { border-color: var(--border); background: white; }
+        .plan-nhap-input:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 2px rgba(200, 121, 65, 0.2); }
+        .plan-nhap-input.changed { background: #fff9e6; border-color: var(--warning); font-weight: 700; }
+        .plan-nhap-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.8rem; font-size: 0.8rem; color: var(--gray); }
+        .plan-nhap-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+        .plan-nhap-legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid #ccc; }
         .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
         .loading-overlay.show { display: flex; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
@@ -108,6 +126,7 @@
             <button class="tab-btn active" onclick="switchTab(event, 'overview')">📊 Tổng Quan</button>
             <button class="tab-btn" onclick="switchTab(event, 'charts')">📈 Biểu Đồ 30 Ngày</button>
             <button class="tab-btn" onclick="switchTab(event, 'qr-input')">📱 Nhập/Xuất</button>
+            <button class="tab-btn" onclick="switchTab(event, 'plan-nhap')">🚚 KH Nhập Nhôm</button>
             <button class="tab-btn" onclick="switchTab(event, 'opening')">🏁 Tồn Đầu Kỳ</button>
             <button class="tab-btn" onclick="switchTab(event, 'settings')">⚙️ Cài Đặt</button>
             <button class="tab-btn" onclick="switchTab(event, 'history')">📋 Lịch Sử</button>
@@ -187,7 +206,7 @@
                         <div class="score-item-unit">Tấn</div>
                     </div>
                     <div class="score-item">
-                        <div class="score-item-label">TỒN KHO KẾ HOẠCH</div>
+                        <div class="score-item-label">Khoảng LSL - USL</div>
                         <div class="score-item-value" id="scorePlanStock" style="font-size: 1.3rem;">0.00 - 0.00</div>
                         <div class="score-item-unit">Tấn</div>
                     </div>
@@ -196,6 +215,37 @@
                 <div class="btn-group">
                     <button class="btn-primary" onclick="submitTransaction()">✓ Ghi Nhận & Lưu Sheet</button>
                     <button class="btn-secondary" onclick="resetTransactionForm()">⟲ Đặt Lại</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Kế Hoạch Nhập Nhôm -->
+        <div id="plan-nhap" class="tab-content">
+            <div class="section">
+                <div class="section-title">🚚 Kế Hoạch Nhập Nhôm 30 Ngày</div>
+                <div class="alert alert-info">
+                    💡 Chỉnh sửa lượng nhập nhôm dự kiến (đơn vị: <b>kg</b>) cho từng ngày.<br>
+                    Khi thực tế nhập lệch so với kế hoạch → sửa ở đây → nhấn <b>Lưu</b> để cập nhật Google Sheet + tồn kế hoạch tự tính lại.
+                </div>
+
+                <div class="btn-group" style="margin-bottom: 0.5rem;">
+                    <button class="btn-primary" onclick="savePlanNhap()">💾 Lưu Tất Cả Thay Đổi</button>
+                    <button class="btn-secondary" onclick="resetPlanNhap()">⟲ Hủy Thay Đổi</button>
+                    <button class="btn-secondary" onclick="loadDataFromSheets()">🔄 Tải Lại Từ Sheets</button>
+                    <span id="planNhapChangeCount" style="margin-left: auto; align-self: center; color: var(--warning); font-weight: 600; font-size: 0.9rem;"></span>
+                </div>
+
+                <div class="plan-nhap-wrapper">
+                    <table class="plan-nhap-table" id="planNhapTable">
+                        <thead id="planNhapHead"></thead>
+                        <tbody id="planNhapBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="plan-nhap-legend">
+                    <span><span class="swatch" style="background: #fff9e6; border-color: #FFC107;"></span> Ô đã sửa (chưa lưu)</span>
+                    <span><span class="swatch" style="background: #fff3e0;"></span> Cuối tuần (T7, CN)</span>
+                    <span><span class="swatch" style="background: #ffe0b2;"></span> Hôm nay</span>
                 </div>
             </div>
         </div>
@@ -267,6 +317,7 @@
         let currentMaterial = 'ADC12-CHT';
         let allData = { opening: {}, planDaily: {}, transactions: [], settings: {}, currentStock: {} };
         let planChart = null;
+        let planNhapChanges = {}; // { "ADC12-DAK": {0: 5000, 3: 37183, ...}, ... } - dayIndex: kg
 
         // ===== INIT =====
         async function init() {
@@ -309,6 +360,7 @@
                 renderMaterialButtons();
                 renderOpeningTable();
                 renderSettingsTable();
+                renderPlanNhapTable();
                 renderTransactionHistory();
                 updateScoreCard();
                 if (planChart) updatePlanChart();
@@ -739,6 +791,192 @@
             }
         }
 
+        // ===== TAB KẾ HOẠCH NHẬP NHÔM =====
+        function renderPlanNhapTable() {
+            const head = document.getElementById('planNhapHead');
+            const body = document.getElementById('planNhapBody');
+            if (!head || !body) return;
+
+            // Lấy danh sách ngày từ mã NVL đầu tiên có dữ liệu
+            let dates = [];
+            for (const code of MATERIALS) {
+                if (allData.planDaily[code] && allData.planDaily[code].dates) {
+                    dates = allData.planDaily[code].dates;
+                    break;
+                }
+            }
+            if (dates.length === 0) {
+                head.innerHTML = '<tr><th>Chưa có dữ liệu kế hoạch</th></tr>';
+                body.innerHTML = '';
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const weekdayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+            // Header 2 dòng: ngày + thứ
+            let headHtml = '<tr><th rowspan="2" style="min-width:120px;">Mã NVL</th>';
+            dates.forEach(d => {
+                const dt = new Date(d);
+                const day = dt.getDay();
+                const isWeekend = (day === 0 || day === 6);
+                const isToday = (d === today);
+                const cls = isToday ? 'today-col' : (isWeekend ? 'weekend' : '');
+                const dayLabel = (dt.getMonth() + 1) + '/' + dt.getDate();
+                headHtml += `<th class="${cls}">${dayLabel}</th>`;
+            });
+            headHtml += '</tr><tr>';
+            dates.forEach(d => {
+                const dt = new Date(d);
+                const day = dt.getDay();
+                const isWeekend = (day === 0 || day === 6);
+                const isToday = (d === today);
+                const cls = isToday ? 'today-col' : (isWeekend ? 'weekend' : '');
+                headHtml += `<th class="${cls}" style="font-size:0.7rem; font-weight:normal;">${weekdayNames[day]}</th>`;
+            });
+            headHtml += '</tr>';
+            head.innerHTML = headHtml;
+
+            // Body: mỗi mã NVL 1 dòng
+            let bodyHtml = '';
+            MATERIALS.forEach(code => {
+                const plan = allData.planDaily[code];
+                bodyHtml += `<tr><td class="material-cell">${code}</td>`;
+                dates.forEach((d, idx) => {
+                    const dt = new Date(d);
+                    const day = dt.getDay();
+                    const isWeekend = (day === 0 || day === 6);
+                    const isToday = (d === today);
+                    const cellCls = isToday ? 'today-col' : (isWeekend ? 'weekend-col' : '');
+                    const originalValue = plan && plan.nhap ? (plan.nhap[idx] || 0) : 0;
+                    const changedValue = planNhapChanges[code] && planNhapChanges[code][idx] !== undefined 
+                        ? planNhapChanges[code][idx] : null;
+                    const displayValue = changedValue !== null ? changedValue : originalValue;
+                    const inputCls = changedValue !== null ? 'plan-nhap-input changed' : 'plan-nhap-input';
+                    bodyHtml += `<td class="${cellCls}"><input type="number" class="${inputCls}" 
+                        data-code="${code}" data-day="${idx}" 
+                        value="${displayValue || ''}" 
+                        placeholder="0"
+                        step="1" min="0"
+                        onchange="onPlanNhapChange(this)"></td>`;
+                });
+                bodyHtml += '</tr>';
+            });
+            body.innerHTML = bodyHtml;
+
+            updatePlanNhapChangeCount();
+        }
+
+        function onPlanNhapChange(input) {
+            const code = input.dataset.code;
+            const day = parseInt(input.dataset.day);
+            const newValue = parseFloat(input.value) || 0;
+            const originalValue = (allData.planDaily[code] && allData.planDaily[code].nhap[day]) || 0;
+
+            if (Math.abs(newValue - originalValue) < 0.001) {
+                // Giống giá trị gốc → bỏ khỏi changes
+                if (planNhapChanges[code]) {
+                    delete planNhapChanges[code][day];
+                    if (Object.keys(planNhapChanges[code]).length === 0) {
+                        delete planNhapChanges[code];
+                    }
+                }
+                input.classList.remove('changed');
+            } else {
+                // Khác giá trị gốc → thêm vào changes
+                if (!planNhapChanges[code]) planNhapChanges[code] = {};
+                planNhapChanges[code][day] = newValue;
+                input.classList.add('changed');
+            }
+            updatePlanNhapChangeCount();
+        }
+
+        function updatePlanNhapChangeCount() {
+            let count = 0;
+            Object.keys(planNhapChanges).forEach(code => {
+                count += Object.keys(planNhapChanges[code]).length;
+            });
+            const el = document.getElementById('planNhapChangeCount');
+            if (el) {
+                el.textContent = count > 0 ? `⚠ ${count} ô đã thay đổi (chưa lưu)` : '';
+            }
+        }
+
+        async function savePlanNhap() {
+            const codesToSave = Object.keys(planNhapChanges);
+            if (codesToSave.length === 0) {
+                alert('Không có thay đổi nào để lưu');
+                return;
+            }
+
+            if (!confirm(`Sẽ cập nhật kế hoạch nhập của ${codesToSave.length} mã NVL vào Google Sheet.\n\nTiếp tục?`)) {
+                return;
+            }
+
+            showLoading(true);
+            setSyncStatus('loading', '⏳ Đang lưu kế hoạch nhập...');
+
+            let successCount = 0;
+            let errorMessages = [];
+
+            for (const code of codesToSave) {
+                try {
+                    // Build mảng 30 số: nếu có thay đổi thì dùng giá trị mới, không thì dùng giá trị gốc
+                    const plan = allData.planDaily[code];
+                    const originalNhap = plan ? plan.nhap : new Array(30).fill(0);
+                    const newNhap = originalNhap.slice();
+                    Object.keys(planNhapChanges[code]).forEach(dayStr => {
+                        const day = parseInt(dayStr);
+                        newNhap[day] = planNhapChanges[code][day];
+                    });
+
+                    const params = new URLSearchParams({
+                        action: 'updatePlanNhap',
+                        material: code,
+                        planNhap: JSON.stringify(newNhap)
+                    });
+
+                    const response = await fetch(GAS_URL + '?' + params.toString());
+                    const result = await response.json();
+
+                    if (result.status === 'ok') {
+                        // Cập nhật local
+                        if (allData.planDaily[code]) {
+                            allData.planDaily[code].nhap = newNhap;
+                        }
+                        successCount++;
+                    } else {
+                        errorMessages.push(`${code}: ${result.message || result.error}`);
+                    }
+                } catch (error) {
+                    errorMessages.push(`${code}: ${error.message}`);
+                }
+            }
+
+            planNhapChanges = {}; // Clear changes
+
+            // Refresh data để lấy tồn dự kiến mới (vì formula chỉ tính lại khi đọc lại)
+            await loadDataFromSheets();
+
+            showLoading(false);
+
+            if (errorMessages.length === 0) {
+                setSyncStatus('ok', '✓ Đã lưu ' + new Date().toLocaleTimeString('vi-VN'));
+                alert(`✓ Đã lưu kế hoạch nhập của ${successCount} mã NVL.\n\nTồn dự kiến đã được tính lại theo formula trong Google Sheet.`);
+            } else {
+                setSyncStatus('error', '❌ Một số lỗi');
+                alert(`Lưu ${successCount} mã thành công.\n\nLỗi:\n${errorMessages.join('\n')}`);
+            }
+        }
+
+        function resetPlanNhap() {
+            if (Object.keys(planNhapChanges).length === 0) return;
+            if (confirm('Hủy tất cả thay đổi chưa lưu?')) {
+                planNhapChanges = {};
+                renderPlanNhapTable();
+            }
+        }
+
         // ===== TAB CÀI ĐẶT =====
         function renderSettingsTable() {
             const tbody = document.getElementById('settingsTable');
@@ -812,6 +1050,7 @@
             document.getElementById(tabName).classList.add('active');
             if (event) event.target.classList.add('active');
             if (tabName === 'charts') setTimeout(() => updatePlanChart(), 100);
+            if (tabName === 'plan-nhap') renderPlanNhapTable();
         }
 
         init();
