@@ -8,17 +8,11 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #C87941;
-            --dark: #1a1a1a;
-            --light: #f5f3f0;
-            --gray: #999;
-            --success: #4CAF50;
-            --warning: #FFC107;
-            --danger: #f44336;
-            --border: #ddd;
-            --blue: #1F4E78;
+            --primary: #C87941; --dark: #1a1a1a; --light: #f5f3f0;
+            --gray: #999; --success: #4CAF50; --warning: #FFC107;
+            --danger: #f44336; --border: #ddd; --blue: #1F4E78;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; background: var(--light); color: var(--dark); }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--light); color: var(--dark); }
         .header { background: var(--dark); color: white; padding: 1.2rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .header-title { font-size: 1.5rem; font-weight: 600; }
         .header-brand { font-size: 0.75rem; color: var(--primary); font-weight: 600; letter-spacing: 1px; }
@@ -28,29 +22,27 @@
         .sync-status.loading { color: #FFC107; }
         .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
         .tabs { display: flex; gap: 0.3rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); overflow-x: auto; flex-wrap: wrap; }
-        .tab-btn { background: none; border: none; padding: 0.8rem 1.2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; color: var(--gray); border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+        .tab-btn { background: none; border: none; padding: 0.8rem 1.2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; color: var(--gray); border-bottom: 3px solid transparent; white-space: nowrap; }
         .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid var(--primary); }
-        .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--dark); }
+        .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
         .form-group { display: flex; flex-direction: column; }
-        .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+        .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--gray); text-transform: uppercase; margin-bottom: 0.5rem; }
         .form-group input, .form-group select, .form-group textarea { padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; font-family: inherit; }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
         .btn-group { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1rem; }
-        button { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        button { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: #b56b3a; }
         .btn-secondary { background: #f0f0f0; color: var(--dark); border: 1px solid var(--border); }
-        .btn-secondary:hover { background: #e8e8e8; }
-        .btn-danger { background: var(--danger); color: white; }
         .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 3px solid var(--primary); margin-bottom: 1.5rem; }
-        .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--dark); }
+        .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
         .chart-container { position: relative; height: 400px; margin-bottom: 1rem; }
         #overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
-        .overview-card { background: white; border-radius: 8px; padding: 1.5rem; border-top: 3px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s; }
+        .overview-card { background: white; border-radius: 8px; padding: 1.5rem; border-top: 3px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; }
         .overview-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
         .overview-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; }
         .overview-card-code { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
@@ -61,11 +53,10 @@
         .overview-card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
         .stat-small { background: #f9f9f9; padding: 0.6rem; border-radius: 4px; }
         .stat-label { font-size: 0.65rem; color: var(--gray); text-transform: uppercase; font-weight: 600; margin-bottom: 0.2rem; }
-        .stat-value { font-size: 1.1rem; font-weight: 700; color: var(--dark); }
+        .stat-value { font-size: 1.1rem; font-weight: 700; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 1rem; }
         .data-table th { background: #f5f5f5; padding: 0.75rem; text-align: left; font-weight: 600; color: var(--gray); border-bottom: 2px solid var(--border); text-transform: uppercase; font-size: 0.75rem; }
         .data-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
-        .data-table tr:hover { background: #f9f9f9; }
         .material-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
         .material-btn { padding: 0.75rem; border: 2px solid var(--border); border-radius: 4px; background: white; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
         .material-btn:hover { border-color: var(--primary); }
@@ -77,8 +68,6 @@
         .score-item-unit { font-size: 0.8rem; color: var(--gray); }
         .alert { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; }
         .alert-info { background: rgba(33, 150, 243, 0.1); color: #1976D2; border-left: 4px solid #1976D2; }
-        .alert-success { background: rgba(76, 175, 80, 0.1); color: var(--success); border-left: 4px solid var(--success); }
-        .alert-error { background: rgba(244, 67, 54, 0.1); color: var(--danger); border-left: 4px solid var(--danger); }
         .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
         .loading-overlay.show { display: flex; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
@@ -95,7 +84,7 @@
 <body>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
-        <p style="margin-top: 1rem; color: var(--gray);">Đang tải dữ liệu...</p>
+        <p style="margin-top: 1rem; color: var(--gray);">Đang tải...</p>
     </div>
 
     <div class="header">
@@ -103,9 +92,7 @@
             <div class="header-title">Quản Lý Tồn Kho NVL</div>
             <div class="header-brand">TOYOTAKI — DIE CASTING</div>
         </div>
-        <div>
-            <span class="sync-status" id="syncStatus">⏳ Đang kết nối...</span>
-        </div>
+        <div><span class="sync-status" id="syncStatus">⏳ Đang kết nối...</span></div>
     </div>
 
     <div class="container">
@@ -113,6 +100,7 @@
             <button class="tab-btn active" onclick="switchTab(event, 'overview')">📊 Tổng Quan</button>
             <button class="tab-btn" onclick="switchTab(event, 'charts')">📈 Biểu Đồ 30 Ngày</button>
             <button class="tab-btn" onclick="switchTab(event, 'qr-input')">📱 Nhập/Xuất</button>
+            <button class="tab-btn" onclick="switchTab(event, 'opening')">🏁 Tồn Đầu Kỳ</button>
             <button class="tab-btn" onclick="switchTab(event, 'settings')">⚙️ Cài Đặt</button>
             <button class="tab-btn" onclick="switchTab(event, 'history')">📋 Lịch Sử</button>
         </div>
@@ -121,7 +109,6 @@
         <div id="overview" class="tab-content active">
             <div class="btn-group" style="margin-bottom: 1rem;">
                 <button class="btn-primary" onclick="loadDataFromSheets()">🔄 Đồng Bộ Từ Google Sheets</button>
-                <a href="https://docs.google.com/spreadsheets/d/PASTE_YOUR_SHEET_ID/edit" target="_blank" class="btn-secondary" style="text-decoration: none; display: inline-block;">📄 Mở Google Sheet</a>
             </div>
             <div id="overview-grid"></div>
         </div>
@@ -132,11 +119,11 @@
                 <div class="section-title">Chọn Loại NVL</div>
                 <div class="material-btns" id="materialButtonsContainer"></div>
             </div>
-
             <div class="card">
                 <div class="card-title">
-                    Kế Hoạch 30 Ngày - <span id="chartMaterialLabel" style="color: var(--primary);">ADC12-CHT</span>
+                    Kế Hoạch vs Thực Tế 30 Ngày - <span id="chartMaterialLabel" style="color: var(--primary);">ADC12-CHT</span>
                 </div>
+                <div class="alert alert-info" id="chartInfo" style="font-size: 0.85rem;"></div>
                 <div class="chart-container">
                     <canvas id="planChart"></canvas>
                 </div>
@@ -147,9 +134,7 @@
         <div id="qr-input" class="tab-content">
             <div class="section">
                 <div class="section-title">📱 Vùng Quét QR Code</div>
-                <div class="alert alert-info">
-                    💡 Format QR: Tag No &gt; Mã NVL &gt; Tên NVL &gt; Ngày &gt; Khối Lượng
-                </div>
+                <div class="alert alert-info">💡 Format QR: Tag No &gt; Mã NVL &gt; Tên NVL &gt; Ngày &gt; Khối Lượng</div>
                 <div class="form-row">
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label>Quét QR Code</label>
@@ -161,10 +146,7 @@
             <div class="section">
                 <div class="section-title">Ghi Nhận Giao Dịch</div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Ngày</label>
-                        <input type="date" id="txDate">
-                    </div>
+                    <div class="form-group"><label>Ngày</label><input type="date" id="txDate"></div>
                     <div class="form-group">
                         <label>Loại</label>
                         <select id="txType" onchange="updateScoreCard()">
@@ -172,19 +154,16 @@
                             <option value="OUT">📤 Xuất</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Mã NVL</label>
-                        <select id="txMaterial" onchange="updateScoreCard()"></select>
-                    </div>
+                    <div class="form-group"><label>Mã NVL</label><select id="txMaterial" onchange="updateScoreCard()"></select></div>
                     <div class="form-group">
                         <label>Khối Lượng (Tấn)</label>
-                        <input type="number" id="txQuantity" step="0.001" min="0" placeholder="0.000" onchange="updateScoreCard()" oninput="updateScoreCard()">
+                        <input type="number" id="txQuantity" step="0.001" min="0" placeholder="0.000" oninput="updateScoreCard()">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label>Ghi Chú</label>
-                        <textarea id="txComment" rows="2" placeholder="Ghi chú thêm..."></textarea>
+                        <textarea id="txComment" rows="2"></textarea>
                     </div>
                 </div>
 
@@ -213,18 +192,38 @@
             </div>
         </div>
 
-        <!-- Tab 4: Cài Đặt -->
-        <div id="settings" class="tab-content">
+        <!-- Tab 4: Tồn Đầu Kỳ -->
+        <div id="opening" class="tab-content">
             <div class="section">
-                <div class="section-title">⚙️ Cài Đặt Bề Rộng Quản Lý</div>
+                <div class="section-title">🏁 Tồn Đầu Kỳ (Kiểm Kê Đầu Tháng)</div>
                 <div class="alert alert-info">
-                    💡 LSL = Tồn Kế Hoạch - Bề Rộng | USL = Tồn Kế Hoạch + Bề Rộng
+                    💡 Đầu tháng: Kiểm kê thực tế → Nhập ngày + số lượng vào đây.<br>
+                    Dashboard sẽ tính tồn thực tế mỗi ngày = <b>Tồn đầu kỳ + Σ(Nhập - Xuất)</b> từ ngày đầu kỳ đến ngày đó.
                 </div>
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>Mã NVL</th>
-                            <th>Bề Rộng Quản Lý (Tấn)</th>
+                            <th>Ngày Đầu Kỳ</th>
+                            <th>Tồn Đầu Kỳ (Tấn)</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="openingTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 5: Cài Đặt -->
+        <div id="settings" class="tab-content">
+            <div class="section">
+                <div class="section-title">⚙️ Cài Đặt Bề Rộng Quản Lý</div>
+                <div class="alert alert-info">💡 LSL = Kế Hoạch - Bề Rộng | USL = Kế Hoạch + Bề Rộng</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Mã NVL</th>
+                            <th>Bề Rộng (Tấn)</th>
                             <th>Hành Động</th>
                         </tr>
                     </thead>
@@ -233,19 +232,15 @@
             </div>
         </div>
 
-        <!-- Tab 5: Lịch Sử -->
+        <!-- Tab 6: Lịch Sử -->
         <div id="history" class="tab-content">
             <div class="card">
-                <div class="card-title">Lịch Sử Giao Dịch</div>
+                <div class="card-title">Lịch Sử Giao Dịch (50 mới nhất)</div>
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Ngày</th>
-                            <th>Loại</th>
-                            <th>Mã NVL</th>
-                            <th>Khối Lượng</th>
-                            <th>Tồn Sau</th>
-                            <th>Ghi Chú</th>
+                            <th>Ngày</th><th>Loại</th><th>Mã NVL</th>
+                            <th>Khối Lượng</th><th>Tồn Sau</th><th>Ghi Chú</th>
                         </tr>
                     </thead>
                     <tbody id="transactionHistoryTable">
@@ -257,37 +252,23 @@
     </div>
 
     <script>
-        // ===== CẤU HÌNH =====
+        // ===== CONFIG =====
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxXYRfz_wuz3RE0a8TCr4zWyzF23G5rc3SWo4ijKLcv7UkLBfdw2um1HbNwRZgAnCc/exec";
-        
-        const MATERIALS = [
-            'ADC12-DAK', 'ADC12-CHT', 'ADC12-TAQ', 'ADC6-CHT',
-            'HD2-HDT', 'EZDA3-HDT', 'EZDA3-MET'
-        ];
+        const MATERIALS = ['ADC12-DAK', 'ADC12-CHT', 'ADC12-TAQ', 'ADC6-CHT', 'HD2-HDT', 'EZDA3-HDT', 'EZDA3-MET'];
 
         let currentMaterial = 'ADC12-CHT';
-        let allData = {
-            planDaily: {},
-            transactions: [],
-            settings: {},
-            currentStock: {}
-        };
+        let allData = { opening: {}, planDaily: {}, transactions: [], settings: {}, currentStock: {} };
         let planChart = null;
 
         // ===== INIT =====
         async function init() {
             document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
-            
-            // Init dropdown mã NVL
             const txSelect = document.getElementById('txMaterial');
             MATERIALS.forEach(code => {
                 const opt = document.createElement('option');
-                opt.value = code;
-                opt.textContent = code;
+                opt.value = code; opt.textContent = code;
                 txSelect.appendChild(opt);
             });
-
-            // Load dữ liệu từ Google Sheets
             await loadDataFromSheets();
         }
 
@@ -297,49 +278,138 @@
             el.className = 'sync-status ' + status;
             el.textContent = message;
         }
-
         function showLoading(show) {
             document.getElementById('loadingOverlay').classList.toggle('show', show);
         }
 
-        // ===== LOAD DỮ LIỆU TỪ GOOGLE SHEETS =====
+        // ===== LOAD DATA =====
         async function loadDataFromSheets() {
             showLoading(true);
             setSyncStatus('loading', '⏳ Đang đồng bộ...');
-
             try {
                 const response = await fetch(GAS_URL + '?action=getAllData');
                 const data = await response.json();
+                if (data.error) throw new Error(data.error);
 
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
+                allData.opening = data.opening || {};
                 allData.planDaily = data.planDaily || {};
                 allData.transactions = data.transactions || [];
                 allData.settings = data.settings || {};
                 allData.currentStock = data.currentStock || {};
 
-                // Render tất cả
                 renderOverview();
                 renderMaterialButtons();
+                renderOpeningTable();
                 renderSettingsTable();
                 renderTransactionHistory();
                 updateScoreCard();
-                
-                if (planChart) {
-                    updatePlanChart();
-                }
+                if (planChart) updatePlanChart();
 
-                setSyncStatus('ok', '✓ Đã đồng bộ ' + new Date().toLocaleTimeString('vi-VN'));
-                console.log('✓ Load Google Sheets thành công', allData);
+                setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
+                console.log('Loaded:', allData);
             } catch (error) {
-                console.error('Lỗi load Google Sheets:', error);
+                console.error('Load error:', error);
                 setSyncStatus('error', '❌ Lỗi kết nối');
-                alert('Không thể tải dữ liệu từ Google Sheets.\n\nLỗi: ' + error.message + '\n\nKiểm tra:\n1. URL Apps Script đúng chưa?\n2. Deploy có chọn "Anyone" không?\n3. Kết nối Internet');
+                alert('Không thể tải dữ liệu: ' + error.message);
             } finally {
                 showLoading(false);
             }
+        }
+
+        // ===== TÍNH TỒN THỰC TẾ THEO NGÀY =====
+        // Trả về mảng tồn thực tế cho từng ngày trong plan.dates
+        // Logic: Bắt đầu từ tồn đầu kỳ, cộng dồn nhập/xuất từ giao dịch
+        function calculateActualStockByDate(materialCode, planDates) {
+            const opening = allData.opening[materialCode];
+            if (!opening || !opening.openingDate) {
+                return planDates.map(() => null); // Không có tồn đầu kỳ
+            }
+
+            const openingDate = opening.openingDate;
+            const openingStock = opening.openingStock || 0;
+
+            // Lọc giao dịch của mã NVL này
+            const txs = allData.transactions
+                .filter(tx => tx.material === materialCode)
+                .filter(tx => tx.date >= openingDate)
+                .sort((a, b) => a.date.localeCompare(b.date));
+
+            // Group giao dịch theo ngày: { "2026-07-04": {in: 5, out: 0}, ... }
+            const dailyDelta = {};
+            txs.forEach(tx => {
+                if (!dailyDelta[tx.date]) dailyDelta[tx.date] = { in: 0, out: 0 };
+                if (tx.type === 'IN') dailyDelta[tx.date].in += tx.quantity;
+                else dailyDelta[tx.date].out += tx.quantity;
+            });
+
+            const today = new Date().toISOString().split('T')[0];
+
+            // Cho từng ngày trong biểu đồ: tính tồn = openingStock + Σ(nhập-xuất) từ opening đến ngày đó
+            let cumulative = openingStock;
+            const result = [];
+            
+            // Nếu ngày đầu biểu đồ < ngày đầu kỳ → không vẽ (null)
+            // Nếu ngày trong biểu đồ >= ngày đầu kỳ → tính cộng dồn
+            // Nếu ngày > today → không vẽ (null)
+
+            // Trước tiên: tính cumulative TỚI ngày đầu tiên trong biểu đồ
+            const firstChartDate = planDates[0];
+            
+            if (firstChartDate > openingDate) {
+                // Cần cộng dồn từ openingDate → firstChartDate - 1
+                Object.keys(dailyDelta).forEach(d => {
+                    if (d >= openingDate && d < firstChartDate) {
+                        cumulative += dailyDelta[d].in - dailyDelta[d].out;
+                    }
+                });
+            }
+
+            // Duyệt từng ngày trong biểu đồ
+            planDates.forEach(d => {
+                if (d < openingDate) {
+                    result.push(null); // Ngày trước tồn đầu kỳ
+                } else if (d > today) {
+                    result.push(null); // Tương lai
+                } else {
+                    // Cộng delta của ngày này (nếu có)
+                    if (d > firstChartDate && dailyDelta[d]) {
+                        cumulative += dailyDelta[d].in - dailyDelta[d].out;
+                    } else if (d === firstChartDate) {
+                        // Ngày đầu biểu đồ: đã tính cumulative ở trên, cộng thêm delta nếu có
+                        if (d >= openingDate && dailyDelta[d]) {
+                            cumulative += dailyDelta[d].in - dailyDelta[d].out;
+                        }
+                    }
+                    result.push(cumulative);
+                }
+            });
+
+            return result;
+        }
+
+        // Lấy tồn thực tế cho HÔM NAY (dùng cho overview + score card)
+        function getCurrentActualStock(materialCode) {
+            const opening = allData.opening[materialCode];
+            if (!opening || !opening.openingDate) {
+                // Fallback: dùng currentStock từ sheet
+                return allData.currentStock[materialCode] || 0;
+            }
+
+            const openingDate = opening.openingDate;
+            const openingStock = opening.openingStock || 0;
+            const today = new Date().toISOString().split('T')[0];
+
+            const txs = allData.transactions
+                .filter(tx => tx.material === materialCode)
+                .filter(tx => tx.date >= openingDate && tx.date <= today);
+
+            let stock = openingStock;
+            txs.forEach(tx => {
+                if (tx.type === 'IN') stock += tx.quantity;
+                else stock -= tx.quantity;
+            });
+
+            return Math.max(0, stock);
         }
 
         // ===== TAB TỔNG QUAN =====
@@ -348,31 +418,20 @@
             container.innerHTML = '';
 
             MATERIALS.forEach(code => {
-                const stock = allData.currentStock[code] || 0;
-                const planToday = getPlanTodayForMaterial(code); // Tấn
+                const stock = getCurrentActualStock(code);
+                const planToday = getPlanTodayForMaterial(code);
                 const bw = allData.settings[code] || 5;
                 const lsl = planToday - bw;
                 const usl = planToday + bw;
 
                 let status, statusText;
-                if (stock < lsl) {
-                    status = 'danger';
-                    statusText = '⚠ Dưới LSL';
-                } else if (stock > usl) {
-                    status = 'warning';
-                    statusText = '⚠ Trên USL';
-                } else {
-                    status = 'ok';
-                    statusText = '✓ Bình Thường';
-                }
+                if (stock < lsl) { status = 'danger'; statusText = '⚠ Dưới LSL'; }
+                else if (stock > usl) { status = 'warning'; statusText = '⚠ Trên USL'; }
+                else { status = 'ok'; statusText = '✓ Bình Thường'; }
 
                 const card = document.createElement('div');
                 card.className = 'overview-card';
-                card.onclick = () => {
-                    currentMaterial = code;
-                    switchToChart();
-                };
-
+                card.onclick = () => { currentMaterial = code; switchToChart(); };
                 card.innerHTML = `
                     <div class="overview-card-header">
                         <div class="overview-card-code">${code}</div>
@@ -401,24 +460,18 @@
             });
         }
 
-        // Tìm tồn kế hoạch cho ngày hôm nay
         function getPlanTodayForMaterial(code) {
             const plan = allData.planDaily[code];
             if (!plan || !plan.dates) return 0;
-
             const today = new Date().toISOString().split('T')[0];
             let idx = plan.dates.indexOf(today);
             if (idx === -1) {
-                // Tìm ngày gần nhất
                 for (let i = 0; i < plan.dates.length; i++) {
-                    if (plan.dates[i] >= today) {
-                        idx = i;
-                        break;
-                    }
+                    if (plan.dates[i] >= today) { idx = i; break; }
                 }
-                if (idx === -1) idx = plan.dates.length - 1; // Ngày cuối
+                if (idx === -1) idx = plan.dates.length - 1;
             }
-            return (plan.tonDuKien[idx] || 0) / 1000; // kg -> tấn
+            return (plan.tonDuKien[idx] || 0) / 1000;
         }
 
         // ===== TAB BIỂU ĐỒ =====
@@ -453,26 +506,24 @@
 
             document.getElementById('chartMaterialLabel').textContent = currentMaterial;
 
-            // Chuyển kg -> tấn cho biểu đồ
+            // Kế hoạch (kg → tấn)
             const planStockTons = plan.tonDuKien.map(v => v / 1000);
             const bw = allData.settings[currentMaterial] || 5;
-
-            // Tính LSL/USL cho mỗi ngày (dựa trên kế hoạch daily)
             const lslData = planStockTons.map(v => v - bw);
             const uslData = planStockTons.map(v => v + bw);
 
-            // Tồn thực tế tính từ giao dịch (chỉ hôm nay)
-            const currentStock = allData.currentStock[currentMaterial] || 0;
-            const today = new Date().toISOString().split('T')[0];
-            const todayIdx = plan.dates.indexOf(today);
-            
-            // Vẽ tồn thực tế: null cho tương lai, giá trị cho quá khứ + hôm nay
-            const actualStock = plan.dates.map((d, i) => {
-                if (d > today) return null;
-                if (d === today) return currentStock;
-                // Ngày quá khứ: tính từ transactions (đơn giản: dùng plan làm proxy)
-                return planStockTons[i];
-            });
+            // Tồn thực tế: tính từ tồn đầu kỳ + giao dịch
+            const actualStock = calculateActualStockByDate(currentMaterial, plan.dates);
+
+            // Info box
+            const opening = allData.opening[currentMaterial];
+            const infoBox = document.getElementById('chartInfo');
+            if (opening && opening.openingDate) {
+                const txCount = allData.transactions.filter(t => t.material === currentMaterial && t.date >= opening.openingDate).length;
+                infoBox.innerHTML = `📌 Tồn đầu kỳ: <b>${opening.openingStock.toFixed(3)} tấn</b> vào ngày <b>${opening.openingDate}</b> | ${txCount} giao dịch từ đầu kỳ`;
+            } else {
+                infoBox.innerHTML = `⚠️ Chưa có tồn đầu kỳ cho ${currentMaterial}. Vào tab "Tồn Đầu Kỳ" để nhập.`;
+            }
 
             const labels = plan.dates.map(d => {
                 const date = new Date(d);
@@ -491,31 +542,25 @@
                             label: 'Tồn Kế Hoạch',
                             data: planStockTons,
                             borderColor: '#999999',
-                            backgroundColor: 'transparent',
                             borderWidth: 1.5,
                             borderDash: [3, 3],
-                            tension: 0,
-                            pointRadius: 0
+                            tension: 0, pointRadius: 0
                         },
                         {
                             label: 'LSL',
                             data: lslData,
                             borderColor: '#E07B39',
-                            backgroundColor: 'transparent',
                             borderWidth: 1.5,
                             borderDash: [5, 5],
-                            tension: 0,
-                            pointRadius: 0
+                            tension: 0, pointRadius: 0
                         },
                         {
                             label: 'USL',
                             data: uslData,
                             borderColor: '#E07B39',
-                            backgroundColor: 'transparent',
                             borderWidth: 1.5,
                             borderDash: [5, 5],
-                            tension: 0,
-                            pointRadius: 0
+                            tension: 0, pointRadius: 0
                         },
                         {
                             label: 'Tồn Thực Tế',
@@ -547,34 +592,23 @@
                         }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: false,
-                            title: { display: true, text: 'Tồn Kho (Tấn)' }
-                        },
-                        x: {
-                            title: { display: true, text: 'Ngày' }
-                        }
+                        y: { beginAtZero: false, title: { display: true, text: 'Tồn Kho (Tấn)' } },
+                        x: { title: { display: true, text: 'Ngày' } }
                     }
                 }
             });
         }
 
-        // ===== TAB NHẬP/XUẤT =====
+        // ===== TAB QR =====
         function parseQRCode() {
             const qrText = document.getElementById('qrInput').value.trim();
             if (!qrText) return;
             const parts = qrText.split('>');
             if (parts.length >= 5) {
-                const tagNo = parts[0].trim();
-                const materialCode = parts[1].trim();
-                const materialName = parts[2].trim();
-                const ngayStr = parts[3].trim();
-                const khoiLuong = parseFloat(parts[4].trim());
-
-                document.getElementById('txDate').value = ngayStr || new Date().toISOString().split('T')[0];
-                document.getElementById('txMaterial').value = materialCode;
-                document.getElementById('txQuantity').value = khoiLuong || 0;
-                document.getElementById('txComment').value = `[QR] Tag: ${tagNo}, ${materialName}`;
+                document.getElementById('txDate').value = parts[3].trim() || new Date().toISOString().split('T')[0];
+                document.getElementById('txMaterial').value = parts[1].trim();
+                document.getElementById('txQuantity').value = parseFloat(parts[4].trim()) || 0;
+                document.getElementById('txComment').value = `[QR] Tag: ${parts[0].trim()}, ${parts[2].trim()}`;
                 document.getElementById('qrInput').value = '';
                 updateScoreCard();
             }
@@ -584,14 +618,11 @@
             const material = document.getElementById('txMaterial').value;
             const txType = document.getElementById('txType').value;
             const quantity = parseFloat(document.getElementById('txQuantity').value) || 0;
-
-            const currentStock = allData.currentStock[material] || 0;
+            const currentStock = getCurrentActualStock(material);
             const planToday = getPlanTodayForMaterial(material);
-
             let afterStock = currentStock;
             if (txType === 'IN') afterStock = currentStock + quantity;
             else afterStock = Math.max(0, currentStock - quantity);
-
             document.getElementById('scoreCurrentStock').textContent = currentStock.toFixed(3);
             document.getElementById('scoreAfterTx').textContent = afterStock.toFixed(3);
             document.getElementById('scorePlanStock').textContent = planToday.toFixed(3);
@@ -605,55 +636,44 @@
             const comment = document.getElementById('txComment').value;
 
             if (!date || isNaN(quantity) || quantity <= 0) {
-                alert('Vui lòng điền đầy đủ thông tin');
-                return;
+                alert('Vui lòng điền đầy đủ thông tin'); return;
             }
 
-            // Tính tồn sau
-            const currentStock = allData.currentStock[material] || 0;
+            const currentStock = getCurrentActualStock(material);
             let afterStock = currentStock;
             if (type === 'IN') afterStock = currentStock + quantity;
             else afterStock = Math.max(0, currentStock - quantity);
 
             showLoading(true);
-            setSyncStatus('loading', '⏳ Đang gửi lên Sheets...');
-
+            setSyncStatus('loading', '⏳ Đang lưu...');
             try {
-                // Gửi lên Google Sheets qua GET (dễ hơn POST vì tránh CORS)
                 const params = new URLSearchParams({
                     action: 'addTransaction',
-                    date: date,
-                    type: type,
-                    material: material,
-                    quantity: quantity,
-                    comment: comment,
+                    date, type, material, quantity, comment,
                     afterStock: afterStock
                 });
-
                 const response = await fetch(GAS_URL + '?' + params.toString());
                 const result = await response.json();
 
                 if (result.status === 'ok') {
-                    // Cập nhật local ngay
+                    // Update local
                     allData.currentStock[material] = afterStock;
                     allData.transactions.push({
                         date, type, material, quantity, comment,
                         afterStock, timestamp: new Date().toISOString()
                     });
-
                     renderOverview();
                     renderTransactionHistory();
                     updateScoreCard();
                     resetTransactionForm();
-                    setSyncStatus('ok', '✓ Đã lưu ' + new Date().toLocaleTimeString('vi-VN'));
-                    alert('✓ Ghi nhận giao dịch thành công!\n\nĐã cập nhật Google Sheet.');
+                    setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
+                    alert('✓ Đã ghi nhận giao dịch!');
                 } else {
-                    throw new Error(result.message || result.error || 'Lỗi không xác định');
+                    throw new Error(result.message || result.error);
                 }
             } catch (error) {
-                console.error('Lỗi ghi giao dịch:', error);
-                setSyncStatus('error', '❌ Lỗi lưu');
-                alert('Lỗi khi lưu giao dịch:\n' + error.message);
+                setSyncStatus('error', '❌ Lỗi');
+                alert('Lỗi: ' + error.message);
             } finally {
                 showLoading(false);
             }
@@ -667,6 +687,58 @@
             updateScoreCard();
         }
 
+        // ===== TAB TỒN ĐẦU KỲ =====
+        function renderOpeningTable() {
+            const tbody = document.getElementById('openingTable');
+            tbody.innerHTML = '';
+            MATERIALS.forEach(code => {
+                const op = allData.opening[code] || { openingDate: '', openingStock: 0 };
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${code}</strong></td>
+                    <td><input type="date" id="opening-date-${code}" value="${op.openingDate}" style="padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px;"></td>
+                    <td><input type="number" id="opening-stock-${code}" value="${op.openingStock}" step="0.001" min="0" style="width: 120px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px;"></td>
+                    <td><button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="saveOpening('${code}')">💾 Lưu</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function saveOpening(code) {
+            const openingDate = document.getElementById(`opening-date-${code}`).value;
+            const openingStock = parseFloat(document.getElementById(`opening-stock-${code}`).value);
+
+            if (!openingDate || isNaN(openingStock) || openingStock < 0) {
+                alert('Vui lòng nhập ngày và số lượng hợp lệ'); return;
+            }
+
+            showLoading(true);
+            try {
+                const params = new URLSearchParams({
+                    action: 'updateOpening',
+                    material: code,
+                    openingDate: openingDate,
+                    openingStock: openingStock
+                });
+                const response = await fetch(GAS_URL + '?' + params.toString());
+                const result = await response.json();
+
+                if (result.status === 'ok') {
+                    allData.opening[code] = { openingDate, openingStock };
+                    allData.currentStock[code] = openingStock; // Reset tồn hiện tại
+                    renderOverview();
+                    setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
+                    alert(`✓ Đã lưu tồn đầu kỳ ${code}: ${openingStock} tấn (${openingDate})`);
+                } else {
+                    throw new Error(result.message || result.error);
+                }
+            } catch (error) {
+                alert('Lỗi: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
         // ===== TAB CÀI ĐẶT =====
         function renderSettingsTable() {
             const tbody = document.getElementById('settingsTable');
@@ -676,12 +748,8 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${code}</strong></td>
-                    <td>
-                        <input type="number" id="setting-${code}" value="${width}" step="0.1" min="0.1" style="width: 120px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px;">
-                    </td>
-                    <td>
-                        <button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="saveOneSetting('${code}')">💾 Lưu</button>
-                    </td>
+                    <td><input type="number" id="setting-${code}" value="${width}" step="0.1" min="0.1" style="width: 120px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px;"></td>
+                    <td><button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="saveOneSetting('${code}')">💾 Lưu</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -689,35 +757,27 @@
 
         async function saveOneSetting(code) {
             const width = parseFloat(document.getElementById(`setting-${code}`).value);
-            if (isNaN(width) || width <= 0) {
-                alert('Bề rộng phải > 0');
-                return;
-            }
+            if (isNaN(width) || width <= 0) { alert('Bề rộng phải > 0'); return; }
 
             showLoading(true);
-            setSyncStatus('loading', '⏳ Đang lưu...');
-
             try {
                 const params = new URLSearchParams({
                     action: 'updateSettings',
                     material: code,
                     width: width
                 });
-
                 const response = await fetch(GAS_URL + '?' + params.toString());
                 const result = await response.json();
-
                 if (result.status === 'ok') {
                     allData.settings[code] = width;
                     renderOverview();
-                    setSyncStatus('ok', '✓ Đã lưu ' + new Date().toLocaleTimeString('vi-VN'));
+                    setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
                     alert(`✓ Đã lưu bề rộng ${code} = ${width} tấn`);
                 } else {
-                    throw new Error(result.message || 'Lỗi');
+                    throw new Error(result.message);
                 }
             } catch (error) {
-                setSyncStatus('error', '❌ Lỗi');
-                alert('Lỗi khi lưu: ' + error.message);
+                alert('Lỗi: ' + error.message);
             } finally {
                 showLoading(false);
             }
@@ -727,12 +787,10 @@
         function renderTransactionHistory() {
             const tbody = document.getElementById('transactionHistoryTable');
             tbody.innerHTML = '';
-
             if (allData.transactions.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--gray);">Chưa có giao dịch</td></tr>';
                 return;
             }
-
             allData.transactions.slice().reverse().slice(0, 50).forEach(tx => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -756,7 +814,6 @@
             if (tabName === 'charts') setTimeout(() => updatePlanChart(), 100);
         }
 
-        // START
         init();
     </script>
 </body>
