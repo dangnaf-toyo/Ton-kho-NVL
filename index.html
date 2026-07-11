@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Quản Lý Tồn Kho NVL - TOYOTAKI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -94,6 +95,100 @@
         .plan-nhap-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.8rem; font-size: 0.8rem; color: var(--gray); }
         .plan-nhap-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
         .plan-nhap-legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid #ccc; }
+
+        /* ============ TEM NVL 70x100mm ============ */
+        .tem-preview-container { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem; }
+        .tem-preview-container > * { flex-shrink: 0; }
+        
+        /* Tem hiển thị trên screen — dùng mm để giống thực tế in */
+        .tem-nvl {
+            width: 70mm;
+            height: 100mm;
+            box-sizing: border-box;
+            background: white;
+            border: 2px solid #000;
+            padding: 3mm;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            page-break-inside: avoid;
+            page-break-after: always;
+            color: #000;
+        }
+        .tem-header {
+            display: flex;
+            align-items: center;
+            gap: 2mm;
+            border-bottom: 1.5px solid #000;
+            padding-bottom: 2mm;
+            margin-bottom: 2mm;
+        }
+        .tem-logo {
+            width: 12mm;
+            height: 12mm;
+            background: #C87941;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 3mm;
+            border-radius: 1.5mm;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .tem-brand { display: flex; flex-direction: column; }
+        .tem-brand .brand-name { font-size: 3mm; font-weight: 700; line-height: 1.1; }
+        .tem-brand .brand-sub { font-size: 2mm; color: #666; line-height: 1.1; margin-top: 0.5mm; }
+        
+        .tem-title {
+            text-align: center;
+            font-size: 3.5mm;
+            font-weight: 700;
+            padding: 1mm 0;
+            background: #000;
+            color: white;
+            margin-bottom: 2mm;
+            letter-spacing: 0.5mm;
+        }
+        
+        .tem-info { flex: 1; font-size: 2.6mm; line-height: 1.4; }
+        .tem-info-row { display: flex; margin-bottom: 0.5mm; }
+        .tem-info-label { width: 20mm; font-weight: 600; color: #333; flex-shrink: 0; }
+        .tem-info-colon { width: 2mm; flex-shrink: 0; }
+        .tem-info-value { flex: 1; font-weight: 700; word-break: break-word; }
+        .tem-info-value.big { font-size: 3.2mm; }
+        
+        .tem-qr-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2mm;
+            padding-top: 2mm;
+            border-top: 1px dashed #999;
+        }
+        .tem-qr-wrapper canvas, .tem-qr-wrapper img {
+            width: 28mm !important;
+            height: 28mm !important;
+        }
+        
+        .tem-tag-large {
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 2.5mm;
+            font-weight: 700;
+            margin-top: 1mm;
+            letter-spacing: 0.3mm;
+        }
+
+        /* Print styles: chỉ in tem, ẩn phần khác */
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; left: 0; top: 0; }
+            .tem-nvl { border: 1.5px solid #000 !important; margin: 0; box-shadow: none; }
+            @page { size: 70mm 100mm; margin: 0; }
+        }
         .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
         .loading-overlay.show { display: flex; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
@@ -126,6 +221,7 @@
             <button class="tab-btn active" onclick="switchTab(event, 'overview')">📊 Tổng Quan</button>
             <button class="tab-btn" onclick="switchTab(event, 'charts')">📈 Biểu Đồ 30 Ngày</button>
             <button class="tab-btn" onclick="switchTab(event, 'qr-input')">📱 Nhập/Xuất</button>
+            <button class="tab-btn" onclick="switchTab(event, 'tem-nvl')">🏷️ In Tem NVL</button>
             <button class="tab-btn" onclick="switchTab(event, 'plan-nhap')">🚚 KH Nhập Nhôm</button>
             <button class="tab-btn" onclick="switchTab(event, 'opening')">🏁 Tồn Đầu Kỳ</button>
             <button class="tab-btn" onclick="switchTab(event, 'settings')">⚙️ Cài Đặt</button>
@@ -206,7 +302,7 @@
                         <div class="score-item-unit">Tấn</div>
                     </div>
                     <div class="score-item">
-                        <div class="score-item-label">Tồn kế hoạch</div>
+                        <div class="score-item-label">Khoảng LSL - USL</div>
                         <div class="score-item-value" id="scorePlanStock" style="font-size: 1.3rem;">0.00 - 0.00</div>
                         <div class="score-item-unit">Tấn</div>
                     </div>
@@ -218,6 +314,99 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tab: In Tem NVL -->
+        <div id="tem-nvl" class="tab-content">
+            <div class="section">
+                <div class="section-title">🏷️ In Tem Nguyên Vật Liệu (QR Code) - 70x100mm</div>
+                <div class="alert alert-info">
+                    💡 Chọn thông tin pallet → xem preview → in tem. Tag No được sinh tự động theo format <b>TYK-YYYYMMDD-XXX</b>.<br>
+                    Có thể in 1 tem hoặc nhiều tem cùng lúc (cùng thông số). Mỗi tem có Tag No riêng, lưu vào Google Sheet.
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Mã NVL</label>
+                        <select id="temMaterial" onchange="updateTemPreview()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tên NVL</label>
+                        <input type="text" id="temName" readonly style="background: #f5f5f5;">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày Nhập</label>
+                        <input type="date" id="temDate" onchange="updateTemPreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>Đơn Vị</label>
+                        <select id="temUnit" onchange="updateTemPreview()">
+                            <option value="kg">kg (kilogram)</option>
+                            <option value="pcs">pcs (pieces)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Số Lượng</label>
+                        <input type="number" id="temQuantity" step="0.001" min="0" placeholder="0.000" oninput="updateTemPreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>Số Tem Cần In</label>
+                        <input type="number" id="temCount" value="1" min="1" max="100" step="1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Ghi Chú (in trên tem)</label>
+                        <input type="text" id="temNote" placeholder="VD: Lot 2607-A, xe container XYZ..." oninput="updateTemPreview()">
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="printTem()">🖨️ In Tem & Lưu Sheet</button>
+                    <button class="btn-secondary" onclick="resetTemForm()">⟲ Xóa Form</button>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <div class="card-title">👁️ Preview Tem (Kích Thước Thật 70x100mm)</div>
+                    <div class="tem-preview-container">
+                        <div id="temPreviewSingle"></div>
+                        <div style="font-size: 0.85rem; color: var(--gray); max-width: 300px;">
+                            <p style="margin-bottom: 0.5rem;"><b>Tem preview:</b></p>
+                            <p>• Tag No hiện là mẫu, khi in sẽ sinh mã thực tế theo Google Sheet.</p>
+                            <p>• QR Code chứa: <code>Tag No&gt;Mã&gt;Tên&gt;Ngày&gt;SL&gt;ĐV</code></p>
+                            <p>• Khi bấm "In Tem", browser sẽ mở dialog in — chọn máy in nhiệt Zywell 307 (192.168.0.188:9100) hoặc PDF để lưu.</p>
+                            <p style="margin-top: 0.5rem;">• <b>Chú ý</b> khi in: set giấy = 70x100mm, margin = 0.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📜 Danh Sách Tem Đã Tạo (100 mới nhất)</div>
+                <div class="btn-group" style="margin-bottom: 0.5rem;">
+                    <button class="btn-secondary" onclick="loadTemList()">🔄 Tải Danh Sách</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tag No</th>
+                            <th>Mã NVL</th>
+                            <th>Ngày Nhập</th>
+                            <th>Số Lượng</th>
+                            <th>ĐV</th>
+                            <th>Ghi Chú</th>
+                            <th>Tạo Lúc</th>
+                            <th>In Lại</th>
+                        </tr>
+                    </thead>
+                    <tbody id="temListTable">
+                        <tr><td colspan="8" style="text-align: center; color: var(--gray);">Nhấn "Tải Danh Sách" để xem</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Print Area (Ẩn, chỉ hiện khi in) -->
+        <div id="printArea" style="position: absolute; left: -10000px; top: 0;"></div>
 
         <!-- Tab: Kế Hoạch Nhập Nhôm -->
         <div id="plan-nhap" class="tab-content">
@@ -313,6 +502,15 @@
         // ===== CONFIG =====
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxXYRfz_wuz3RE0a8TCr4zWyzF23G5rc3SWo4ijKLcv7UkLBfdw2um1HbNwRZgAnCc/exec";
         const MATERIALS = ['ADC12-DAK', 'ADC12-CHT', 'ADC12-TAQ', 'ADC6-CHT', 'HD2-HDT', 'EZDA3-HDT', 'EZDA3-MET'];
+        const MATERIAL_NAMES = {
+            'ADC12-DAK': 'Nhôm ADC12 của Daikin',
+            'ADC12-CHT': 'Nhôm ADC12 của Chiến Thắng',
+            'ADC12-TAQ': 'Nhôm ADC12 của TAQ',
+            'ADC6-CHT': 'Nhôm ADC6 của Chiến Thắng',
+            'HD2-HDT': 'Kẽm HD2 của HDT',
+            'EZDA3-HDT': 'Kẽm EZDA3 của Honda Trading',
+            'EZDA3-MET': 'Kẽm EZDA3 của MET'
+        };
 
         let currentMaterial = 'ADC12-CHT';
         let allData = { opening: {}, planDaily: {}, transactions: [], settings: {}, currentStock: {} };
@@ -322,13 +520,21 @@
         // ===== INIT =====
         async function init() {
             document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('temDate').value = new Date().toISOString().split('T')[0];
             const txSelect = document.getElementById('txMaterial');
+            const temSelect = document.getElementById('temMaterial');
             MATERIALS.forEach(code => {
-                const opt = document.createElement('option');
-                opt.value = code; opt.textContent = code;
-                txSelect.appendChild(opt);
+                const opt1 = document.createElement('option');
+                opt1.value = code; opt1.textContent = code;
+                txSelect.appendChild(opt1);
+                const opt2 = document.createElement('option');
+                opt2.value = code; opt2.textContent = code + ' — ' + MATERIAL_NAMES[code];
+                temSelect.appendChild(opt2);
             });
+            // Init temName sau khi có mã đầu tiên
+            document.getElementById('temName').value = MATERIAL_NAMES[MATERIALS[0]] || '';
             await loadDataFromSheets();
+            updateTemPreview();
         }
 
         // ===== SYNC STATUS =====
@@ -791,6 +997,239 @@
             }
         }
 
+        // ===== TAB IN TEM NVL =====
+        function buildTemHTML(tem) {
+            // tem: { tagNo, material, tenNVL, ngayNhap, soLuong, donVi, ghiChu }
+            const soLuongDisplay = tem.donVi === 'kg' 
+                ? Number(tem.soLuong).toLocaleString('vi-VN', { maximumFractionDigits: 3 })
+                : Number(tem.soLuong).toString();
+            const ngayDisplay = new Date(tem.ngayNhap).toLocaleDateString('vi-VN');
+            const qrId = 'qr-' + Math.random().toString(36).substring(2, 10);
+            
+            return `
+                <div class="tem-nvl">
+                    <div class="tem-header">
+                        <div class="tem-logo">TYK</div>
+                        <div class="tem-brand">
+                            <div class="brand-name">TOYOTAKI</div>
+                            <div class="brand-sub">Die Casting Industry</div>
+                        </div>
+                    </div>
+                    <div class="tem-title">TEM NGUYÊN VẬT LIỆU</div>
+                    <div class="tem-info">
+                        <div class="tem-info-row">
+                            <span class="tem-info-label">Tag No</span>
+                            <span class="tem-info-colon">:</span>
+                            <span class="tem-info-value big">${tem.tagNo}</span>
+                        </div>
+                        <div class="tem-info-row">
+                            <span class="tem-info-label">Mã NVL</span>
+                            <span class="tem-info-colon">:</span>
+                            <span class="tem-info-value big">${tem.material}</span>
+                        </div>
+                        <div class="tem-info-row">
+                            <span class="tem-info-label">Tên NVL</span>
+                            <span class="tem-info-colon">:</span>
+                            <span class="tem-info-value">${tem.tenNVL}</span>
+                        </div>
+                        <div class="tem-info-row">
+                            <span class="tem-info-label">Ngày nhập</span>
+                            <span class="tem-info-colon">:</span>
+                            <span class="tem-info-value">${ngayDisplay}</span>
+                        </div>
+                        <div class="tem-info-row">
+                            <span class="tem-info-label">Số lượng</span>
+                            <span class="tem-info-colon">:</span>
+                            <span class="tem-info-value big">${soLuongDisplay}</span>
+                        </div>
+                        <div class="tem-info-row">
+                            <span class="tem-info-label">Đơn vị</span>
+                            <span class="tem-info-colon">:</span>
+                            <span class="tem-info-value">${tem.donVi}</span>
+                        </div>
+                        ${tem.ghiChu ? `
+                        <div class="tem-info-row">
+                            <span class="tem-info-label">Ghi chú</span>
+                            <span class="tem-info-colon">:</span>
+                            <span class="tem-info-value" style="font-weight:normal; font-size: 2.4mm;">${tem.ghiChu}</span>
+                        </div>` : ''}
+                    </div>
+                    <div class="tem-qr-wrapper">
+                        <div id="${qrId}"></div>
+                    </div>
+                    <div class="tem-tag-large">${tem.tagNo}</div>
+                </div>
+            `;
+        }
+
+        // Render QR code trên element có id đã sinh
+        function renderQRsInContainer(container, tems) {
+            // Gán ID theo thứ tự tem để renderer QR đúng
+            const wrappers = container.querySelectorAll('.tem-qr-wrapper > div');
+            wrappers.forEach((div, idx) => {
+                if (!tems[idx]) return;
+                const tem = tems[idx];
+                const qrContent = [tem.tagNo, tem.material, tem.tenNVL, tem.ngayNhap, tem.soLuong, tem.donVi].join('>');
+                div.innerHTML = ''; // Clear
+                try {
+                    new QRCode(div, {
+                        text: qrContent,
+                        width: 106,  // ~28mm ở 96dpi = 28/25.4*96 ≈ 106
+                        height: 106,
+                        colorDark: '#000000',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                } catch (e) {
+                    div.innerHTML = '<span style="color:red;font-size:2mm">QR error</span>';
+                    console.error('QR error:', e);
+                }
+            });
+        }
+
+        function getFormValuesForTem() {
+            const material = document.getElementById('temMaterial').value;
+            return {
+                material: material,
+                tenNVL: MATERIAL_NAMES[material] || material,
+                ngayNhap: document.getElementById('temDate').value || new Date().toISOString().split('T')[0],
+                soLuong: parseFloat(document.getElementById('temQuantity').value) || 0,
+                donVi: document.getElementById('temUnit').value,
+                ghiChu: document.getElementById('temNote').value.trim()
+            };
+        }
+
+        function updateTemPreview() {
+            const form = getFormValuesForTem();
+            document.getElementById('temName').value = form.tenNVL;
+
+            // Preview 1 tem với Tag No mẫu
+            const previewTem = {
+                ...form,
+                tagNo: 'TYK-' + form.ngayNhap.replace(/-/g, '') + '-001'
+            };
+            const container = document.getElementById('temPreviewSingle');
+            container.innerHTML = buildTemHTML(previewTem);
+            renderQRsInContainer(container, [previewTem]);
+        }
+
+        async function printTem() {
+            const form = getFormValuesForTem();
+            const count = parseInt(document.getElementById('temCount').value) || 1;
+
+            if (!form.material || form.soLuong <= 0) {
+                alert('Vui lòng chọn Mã NVL và nhập Số Lượng > 0');
+                return;
+            }
+            if (count < 1 || count > 100) {
+                alert('Số tem cần in phải từ 1 đến 100');
+                return;
+            }
+
+            if (!confirm(`Sẽ tạo ${count} tem (${form.material}, ${form.soLuong} ${form.donVi}) và lưu vào Google Sheet.\n\nTiếp tục?`)) {
+                return;
+            }
+
+            showLoading(true);
+            setSyncStatus('loading', '⏳ Đang tạo tem...');
+
+            try {
+                const params = new URLSearchParams({
+                    action: 'createTem',
+                    material: form.material,
+                    ngayNhap: form.ngayNhap,
+                    soLuong: form.soLuong,
+                    donVi: form.donVi,
+                    ghiChu: form.ghiChu,
+                    quantity: count
+                });
+
+                const response = await fetch(GAS_URL + '?' + params.toString());
+                const result = await response.json();
+
+                if (result.status !== 'ok') {
+                    throw new Error(result.message || result.error || 'Lỗi tạo tem');
+                }
+
+                const tems = result.tems;
+                setSyncStatus('ok', '✓ Đã tạo ' + tems.length + ' tem');
+
+                // Build HTML cho tất cả tem trong printArea
+                const printArea = document.getElementById('printArea');
+                printArea.innerHTML = tems.map(t => buildTemHTML(t)).join('');
+                renderQRsInContainer(printArea, tems);
+
+                // Đợi QR render xong rồi in
+                setTimeout(() => {
+                    showLoading(false);
+                    window.print();
+                    
+                    // Sau khi in, hỏi có cần refresh danh sách tem không
+                    setTimeout(() => {
+                        if (confirm('Đã in xong. Cập nhật danh sách tem đã tạo?')) {
+                            loadTemList();
+                        }
+                    }, 500);
+                }, 500);
+
+            } catch (error) {
+                showLoading(false);
+                setSyncStatus('error', '❌ Lỗi');
+                alert('Lỗi: ' + error.message);
+            }
+        }
+
+        function resetTemForm() {
+            document.getElementById('temDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('temQuantity').value = '';
+            document.getElementById('temCount').value = '1';
+            document.getElementById('temNote').value = '';
+            document.getElementById('temUnit').value = 'kg';
+            updateTemPreview();
+        }
+
+        async function loadTemList() {
+            const tbody = document.getElementById('temListTable');
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--gray);">Đang tải...</td></tr>';
+            
+            try {
+                const response = await fetch(GAS_URL + '?action=getTemList');
+                const list = await response.json();
+                
+                if (!Array.isArray(list) || list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--gray);">Chưa có tem nào</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                list.forEach(tem => {
+                    const row = document.createElement('tr');
+                    const timeDisplay = tem.timestamp ? new Date(tem.timestamp).toLocaleString('vi-VN') : '-';
+                    row.innerHTML = `
+                        <td><strong style="font-family: monospace;">${tem.tagNo}</strong></td>
+                        <td>${tem.material}</td>
+                        <td>${tem.ngayNhap}</td>
+                        <td>${Number(tem.soLuong).toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</td>
+                        <td>${tem.donVi}</td>
+                        <td style="font-size: 0.85rem;">${tem.ghiChu || '-'}</td>
+                        <td style="font-size: 0.8rem; color: var(--gray);">${timeDisplay}</td>
+                        <td><button class="btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick='reprintTem(${JSON.stringify(tem).replace(/'/g, "&apos;")})'>🖨️ In lại</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--danger);">Lỗi: ' + error.message + '</td></tr>';
+            }
+        }
+
+        function reprintTem(tem) {
+            // In lại 1 tem đã tồn tại (không sinh Tag No mới)
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = buildTemHTML(tem);
+            renderQRsInContainer(printArea, [tem]);
+            setTimeout(() => window.print(), 300);
+        }
+
         // ===== TAB KẾ HOẠCH NHẬP NHÔM =====
         function renderPlanNhapTable() {
             const head = document.getElementById('planNhapHead');
@@ -1051,6 +1490,7 @@
             if (event) event.target.classList.add('active');
             if (tabName === 'charts') setTimeout(() => updatePlanChart(), 100);
             if (tabName === 'plan-nhap') renderPlanNhapTable();
+            if (tabName === 'tem-nvl') updateTemPreview();
         }
 
         init();
