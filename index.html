@@ -106,32 +106,31 @@
             height: 100mm;
             box-sizing: border-box;
             background: white;
-            border: 1.5px solid #000;
-            padding: 3mm;
+            border: 2px solid #000;
+            padding: 2.5mm;
             font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             page-break-inside: avoid;
             page-break-after: always;
             color: #000;
-            overflow: hidden;
         }
-        /* Header: Logo + Title cùng 1 hàng, KHÔNG có border dưới */
         .tem-header {
             display: flex;
             align-items: center;
-            gap: 3mm;
-            margin-bottom: 2.5mm;
+            justify-content: center;
+            border-bottom: 1.5px solid #000;
+            padding-bottom: 2mm;
+            margin-bottom: 2mm;
         }
         .tem-logo {
-            width: 14mm;
-            height: 14mm;
+            width: 15mm;
+            height: 15mm;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             background: white;
-            flex-shrink: 0;
         }
         .tem-logo img {
             width: 100%;
@@ -151,31 +150,33 @@
             font-size: 4mm;
             line-height: 1;
         }
+        
         .tem-title {
-            flex: 1;
             text-align: center;
-            font-size: 4.2mm;
+            font-size: 4mm;
             font-weight: 900;
+            padding: 1.5mm 0;
             color: #000;
+            margin-bottom: 2mm;
             letter-spacing: 0.3mm;
-            line-height: 1.15;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
         }
         
-        /* Info block - KHÔNG border, spacing thoáng */
-        .tem-info { font-size: 2.7mm; line-height: 1.5; color: #000; margin-bottom: 2.5mm; }
+        .tem-info { flex: 1; font-size: 2.8mm; line-height: 1.4; color: #000; }
         .tem-info-row { display: flex; margin-bottom: 0.8mm; }
-        .tem-info-label { width: 18mm; font-weight: 700; color: #000; flex-shrink: 0; }
+        .tem-info-label { width: 20mm; font-weight: 700; color: #000; flex-shrink: 0; }
         .tem-info-colon { width: 2mm; flex-shrink: 0; font-weight: 700; }
         .tem-info-value { flex: 1; font-weight: 700; word-break: break-word; color: #000; }
-        .tem-info-value.big { font-size: 3.1mm; font-weight: 900; }
+        .tem-info-value.big { font-size: 3.3mm; font-weight: 900; }
         
-        /* QR area - CĂN GIỮA trong không gian còn lại, KHÔNG border */
-        .tem-qr-block {
-            flex: 1;
+        .tem-qr-wrapper {
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
+            margin-top: 1.5mm;
+            padding-top: 1.5mm;
+            border-top: 1px dashed #000;
         }
         .tem-qr-wrapper > div {
             width: 28mm;
@@ -189,6 +190,7 @@
             height: 28mm !important;
             display: block;
         }
+        
         .tem-tag-large {
             text-align: center;
             font-family: 'Courier New', monospace;
@@ -199,25 +201,16 @@
             color: #000;
         }
         
-        /* Footer - KHÔNG border, đen đậm */
         .tem-footer {
             text-align: center;
-            font-size: 2.1mm;
-            font-weight: 900;
+            font-size: 2.3mm;
+            font-weight: 700;
             color: #000;
-            margin-top: 2mm;
-            letter-spacing: 0.15mm;
+            margin-top: 1.5mm;
+            padding-top: 1.5mm;
+            border-top: 1.5px solid #000;
+            letter-spacing: 0.2mm;
         }
-
-        /* Bảng nhập số lượng nhiều tem */
-        .multi-qty-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-        .multi-qty-table th { background: #1F4E78; color: white; padding: 0.5rem; font-size: 0.8rem; font-weight: 600; }
-        .multi-qty-table td { padding: 0.4rem; border-bottom: 1px solid var(--border); text-align: center; }
-        .multi-qty-table input { width: 100%; padding: 0.4rem; border: 1px solid var(--border); border-radius: 3px; font-size: 0.9rem; text-align: center; }
-        .multi-qty-table input:focus { outline: none; border-color: var(--primary); }
-        .multi-qty-table .row-num { font-weight: 700; color: var(--gray); width: 40px; }
-        .multi-qty-summary { text-align: right; font-size: 0.85rem; color: var(--gray); margin-top: 0.5rem; }
-        .multi-qty-summary b { color: var(--primary); }
 
         /* #printArea: mặc định ẩn khi xem màn hình */
         #printArea { display: none; }
@@ -384,8 +377,8 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Mã NVL <span id="temMasterStatus" style="font-size: 0.7rem; color: var(--gray); font-weight: normal;"></span></label>
-                        <select id="temMaterial" onchange="onTemMaterialChange()"></select>
+                        <label>Mã NVL</label>
+                        <select id="temMaterial" onchange="updateTemPreview()"></select>
                     </div>
                     <div class="form-group">
                         <label>Tên NVL</label>
@@ -393,42 +386,28 @@
                     </div>
                     <div class="form-group">
                         <label>Ngày Nhập</label>
-                        <input type="date" id="temDate" onchange="rerenderTemQtyTable()">
+                        <input type="date" id="temDate" onchange="updateTemPreview()">
                     </div>
                     <div class="form-group">
                         <label>Đơn Vị</label>
-                        <select id="temUnit" onchange="rerenderTemQtyTable()">
+                        <select id="temUnit" onchange="updateTemPreview()">
                             <option value="kg">kg (kilogram)</option>
                             <option value="pcs">pcs (pieces)</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Số Tem Cần In</label>
-                        <input type="number" id="temCount" value="1" min="1" max="100" step="1" onchange="rerenderTemQtyTable()" oninput="rerenderTemQtyTable()">
+                        <label>Số Lượng</label>
+                        <input type="number" id="temQuantity" step="0.001" min="0" placeholder="0.000" oninput="updateTemPreview()">
                     </div>
                     <div class="form-group">
-                        <label>Số Lượng Mặc Định (áp dụng nhanh)</label>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <input type="number" id="temDefaultQty" step="0.001" min="0" placeholder="0.000">
-                            <button class="btn-secondary" style="padding: 0.5rem 1rem; white-space: nowrap;" onclick="applyDefaultQtyToAll()">↓ Áp dụng</button>
-                        </div>
+                        <label>Số Tem Cần In</label>
+                        <input type="number" id="temCount" value="1" min="1" max="100" step="1">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group" style="grid-column: 1 / -1;">
-                        <label>Ghi Chú (in trên tất cả tem)</label>
-                        <input type="text" id="temNote" placeholder="VD: Lot 2607-A, xe container XYZ..." oninput="rerenderTemQtyTable()">
-                    </div>
-                </div>
-
-                <!-- Bảng nhập số lượng cho từng tem -->
-                <div style="margin-top: 1rem;">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--dark);">📋 Số lượng cho từng tem (mỗi pallet 1 dòng)</div>
-                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px;">
-                        <table class="multi-qty-table" id="temQtyTable"></table>
-                    </div>
-                    <div class="multi-qty-summary">
-                        Tổng: <b id="temTotalQty">0</b> <span id="temTotalUnit">kg</span> | Số tem: <b id="temTotalCount">0</b>
+                        <label>Ghi Chú (in trên tem)</label>
+                        <input type="text" id="temNote" placeholder="VD: Lot 2607-A, xe container XYZ..." oninput="updateTemPreview()">
                     </div>
                 </div>
 
@@ -594,14 +573,19 @@
             document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('temDate').value = new Date().toISOString().split('T')[0];
             const txSelect = document.getElementById('txMaterial');
+            const temSelect = document.getElementById('temMaterial');
             MATERIALS.forEach(code => {
                 const opt1 = document.createElement('option');
                 opt1.value = code; opt1.textContent = code;
                 txSelect.appendChild(opt1);
+                const opt2 = document.createElement('option');
+                opt2.value = code; opt2.textContent = code + ' — ' + MATERIAL_NAMES[code];
+                temSelect.appendChild(opt2);
             });
+            // Init temName sau khi có mã đầu tiên
+            document.getElementById('temName').value = MATERIAL_NAMES[MATERIALS[0]] || '';
             await loadDataFromSheets();
-            // Load master data cho tab In Tem (async, không chờ)
-            loadMasterMaterialsForTem();
+            updateTemPreview();
         }
 
         // ===== SYNC STATUS =====
@@ -1087,8 +1071,8 @@
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                             <div class="fallback" style="display:none;">TYK</div>
                         </div>
-                        <div class="tem-title">TEM NGUYÊN<br>VẬT LIỆU</div>
                     </div>
+                    <div class="tem-title">TEM NGUYÊN VẬT LIỆU</div>
                     <div class="tem-info">
                         <div class="tem-info-row">
                             <span class="tem-info-label">Tag No</span>
@@ -1124,15 +1108,13 @@
                         <div class="tem-info-row">
                             <span class="tem-info-label">Ghi chú</span>
                             <span class="tem-info-colon">:</span>
-                            <span class="tem-info-value" style="font-size: 2.3mm;">${tem.ghiChu}</span>
+                            <span class="tem-info-value" style="font-size: 2.5mm;">${tem.ghiChu}</span>
                         </div>` : ''}
                     </div>
-                    <div class="tem-qr-block">
-                        <div class="tem-qr-wrapper">
-                            <div id="${qrId}"></div>
-                        </div>
-                        <div class="tem-tag-large">${tem.tagNo}</div>
+                    <div class="tem-qr-wrapper">
+                        <div id="${qrId}"></div>
                     </div>
+                    <div class="tem-tag-large">${tem.tagNo}</div>
                     <div class="tem-footer">CÔNG TY CỔ PHẦN CÔNG NGHIỆP TOYOTAKI</div>
                 </div>
             `;
@@ -1171,187 +1153,25 @@
             });
         }
 
-        // Danh sách Mã NVL từ Master (sheet KHSX)
-        // Format: [{ ma: "ADC12-DAK", ten: "Nhôm ADC12 của Daikin" }, ...]
-        let masterMaterialsList = [];
-
         function getFormValuesForTem() {
             const material = document.getElementById('temMaterial').value;
-            // Tìm tên từ master list (fallback về hardcoded MATERIAL_NAMES nếu chưa có master)
-            let tenNVL = '';
-            const foundInMaster = masterMaterialsList.find(m => m.ma === material);
-            if (foundInMaster) {
-                tenNVL = foundInMaster.ten;
-            } else if (MATERIAL_NAMES[material]) {
-                tenNVL = MATERIAL_NAMES[material];
-            } else {
-                tenNVL = material;
-            }
             return {
                 material: material,
-                tenNVL: tenNVL,
+                tenNVL: MATERIAL_NAMES[material] || material,
                 ngayNhap: document.getElementById('temDate').value || new Date().toISOString().split('T')[0],
+                soLuong: parseFloat(document.getElementById('temQuantity').value) || 0,
                 donVi: document.getElementById('temUnit').value,
                 ghiChu: document.getElementById('temNote').value.trim()
             };
         }
 
-        // Load master materials từ Google Sheet KHSX
-        async function loadMasterMaterialsForTem() {
-            const statusEl = document.getElementById('temMasterStatus');
-            statusEl.textContent = '(đang tải từ KHSX...)';
-            
-            try {
-                const response = await fetch(GAS_URL + '?action=getMasterMaterials');
-                const result = await response.json();
-                
-                if (result.status !== 'ok') {
-                    throw new Error(result.message || 'Không lấy được master data');
-                }
-                
-                masterMaterialsList = result.materials || [];
-                populateTemMaterialDropdown();
-                statusEl.textContent = `(${masterMaterialsList.length} mã từ KHSX Master)`;
-                statusEl.style.color = 'var(--success)';
-            } catch (error) {
-                console.error('Load master error:', error);
-                // Fallback: dùng MATERIALS list hardcoded
-                masterMaterialsList = MATERIALS.map(m => ({ ma: m, ten: MATERIAL_NAMES[m] || m }));
-                populateTemMaterialDropdown();
-                statusEl.textContent = '(⚠ dùng list mặc định, không đọc được KHSX)';
-                statusEl.style.color = 'var(--danger)';
-            }
-        }
-
-        function populateTemMaterialDropdown() {
-            const temSelect = document.getElementById('temMaterial');
-            const currentValue = temSelect.value;
-            temSelect.innerHTML = '';
-            
-            if (masterMaterialsList.length === 0) {
-                const opt = document.createElement('option');
-                opt.value = ''; opt.textContent = '(Không có mã nào)';
-                temSelect.appendChild(opt);
-                return;
-            }
-            
-            masterMaterialsList.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.ma;
-                opt.textContent = m.ma;
-                temSelect.appendChild(opt);
-            });
-            
-            // Giữ selection cũ nếu có, không thì lấy mã đầu
-            if (currentValue && masterMaterialsList.find(m => m.ma === currentValue)) {
-                temSelect.value = currentValue;
-            } else {
-                temSelect.value = masterMaterialsList[0].ma;
-            }
-            onTemMaterialChange();
-        }
-
-        function onTemMaterialChange() {
-            const form = getFormValuesForTem();
-            document.getElementById('temName').value = form.tenNVL;
-            rerenderTemQtyTable();
-        }
-
-        // Render bảng nhập số lượng cho N tem
-        function rerenderTemQtyTable() {
-            const count = Math.min(Math.max(parseInt(document.getElementById('temCount').value) || 1, 1), 100);
-            const table = document.getElementById('temQtyTable');
-            const unit = document.getElementById('temUnit').value;
-            
-            // Lưu các giá trị cũ để không mất khi rerender
-            const oldValues = {};
-            document.querySelectorAll('.tem-qty-input').forEach(inp => {
-                oldValues[inp.dataset.idx] = inp.value;
-            });
-            
-            let html = `<thead><tr>
-                <th class="row-num">#</th>
-                <th>Số lượng (${unit})</th>
-                <th style="width: 40%;">Ghi chú riêng cho tem này (tùy chọn)</th>
-            </tr></thead><tbody>`;
-            
-            for (let i = 0; i < count; i++) {
-                const val = oldValues[i] !== undefined ? oldValues[i] : '';
-                const note = document.querySelector(`.tem-note-input[data-idx="${i}"]`);
-                const noteVal = note ? note.value : '';
-                html += `<tr>
-                    <td class="row-num">${i + 1}</td>
-                    <td><input type="number" class="tem-qty-input" data-idx="${i}" step="0.001" min="0" 
-                        value="${val}" placeholder="0.000" oninput="updateTemTotalDisplay()"></td>
-                    <td><input type="text" class="tem-note-input" data-idx="${i}" 
-                        value="${noteVal}" placeholder="(dùng ghi chú chung nếu để trống)"></td>
-                </tr>`;
-            }
-            html += '</tbody>';
-            table.innerHTML = html;
-            
-            updateTemTotalDisplay();
-        }
-
-        function updateTemTotalDisplay() {
-            const inputs = document.querySelectorAll('.tem-qty-input');
-            let total = 0;
-            let count = 0;
-            inputs.forEach(inp => {
-                const v = parseFloat(inp.value) || 0;
-                if (v > 0) { total += v; count++; }
-            });
-            const unit = document.getElementById('temUnit').value;
-            document.getElementById('temTotalQty').textContent = total.toLocaleString('vi-VN', { maximumFractionDigits: 3 });
-            document.getElementById('temTotalUnit').textContent = unit;
-            document.getElementById('temTotalCount').textContent = count;
-            // Cập nhật preview
-            updateTemPreview();
-        }
-
-        function applyDefaultQtyToAll() {
-            const val = document.getElementById('temDefaultQty').value;
-            if (!val || parseFloat(val) <= 0) {
-                alert('Nhập số lượng mặc định > 0 trước khi áp dụng');
-                return;
-            }
-            document.querySelectorAll('.tem-qty-input').forEach(inp => {
-                if (!inp.value || parseFloat(inp.value) === 0) {
-                    inp.value = val;
-                }
-            });
-            updateTemTotalDisplay();
-        }
-
-        // Lấy mảng số lượng và ghi chú từ bảng
-        function collectTemQtyList() {
-            const qtyInputs = document.querySelectorAll('.tem-qty-input');
-            const noteInputs = document.querySelectorAll('.tem-note-input');
-            const list = [];
-            qtyInputs.forEach((inp, idx) => {
-                const qty = parseFloat(inp.value) || 0;
-                const noteRow = noteInputs[idx] ? noteInputs[idx].value.trim() : '';
-                if (qty > 0) {
-                    list.push({ soLuong: qty, ghiChuRieng: noteRow });
-                }
-            });
-            return list;
-        }
-
-        // Preview tem — dùng số lượng đầu tiên của bảng làm ví dụ
         function updateTemPreview() {
             const form = getFormValuesForTem();
             document.getElementById('temName').value = form.tenNVL;
-            
-            const list = collectTemQtyList();
-            const firstQty = list.length > 0 ? list[0].soLuong : 0;
-            const firstNote = list.length > 0 && list[0].ghiChuRieng ? list[0].ghiChuRieng : form.ghiChu;
 
-            // Preview 1 tem
+            // Preview 1 tem với Tag No mẫu
             const previewTem = {
                 ...form,
-                soLuong: firstQty,
-                ghiChu: firstNote,
                 tagNo: 'TYK-' + form.ngayNhap.replace(/-/g, '') + '-001'
             };
             const container = document.getElementById('temPreviewSingle');
@@ -1383,23 +1203,18 @@
 
         async function printTem() {
             const form = getFormValuesForTem();
-            const list = collectTemQtyList();
+            const count = parseInt(document.getElementById('temCount').value) || 1;
 
-            if (!form.material) {
-                alert('Vui lòng chọn Mã NVL');
+            if (!form.material || form.soLuong <= 0) {
+                alert('Vui lòng chọn Mã NVL và nhập Số Lượng > 0');
                 return;
             }
-            if (list.length === 0) {
-                alert('Vui lòng nhập số lượng cho ít nhất 1 tem');
-                return;
-            }
-            if (list.length > 100) {
-                alert('Tối đa 100 tem/lần in');
+            if (count < 1 || count > 100) {
+                alert('Số tem cần in phải từ 1 đến 100');
                 return;
             }
 
-            const totalQty = list.reduce((s, x) => s + x.soLuong, 0);
-            if (!confirm(`Sẽ tạo ${list.length} tem (${form.material}, tổng ${totalQty.toLocaleString('vi-VN')} ${form.donVi}) và lưu vào Google Sheet.\n\nTiếp tục?`)) {
+            if (!confirm(`Sẽ tạo ${count} tem (${form.material}, ${form.soLuong} ${form.donVi}) và lưu vào Google Sheet.\n\nTiếp tục?`)) {
                 return;
             }
 
@@ -1407,16 +1222,14 @@
             setSyncStatus('loading', '⏳ Đang tạo tem...');
 
             try {
-                const soLuongList = list.map(x => x.soLuong);
-                
                 const params = new URLSearchParams({
                     action: 'createTem',
                     material: form.material,
-                    tenNVL: form.tenNVL,
                     ngayNhap: form.ngayNhap,
+                    soLuong: form.soLuong,
                     donVi: form.donVi,
                     ghiChu: form.ghiChu,
-                    soLuongList: JSON.stringify(soLuongList)
+                    quantity: count
                 });
 
                 const response = await fetch(GAS_URL + '?' + params.toString());
@@ -1426,12 +1239,7 @@
                     throw new Error(result.message || result.error || 'Lỗi tạo tem');
                 }
 
-                // Map lại ghi chú riêng vào từng tem (từ frontend, backend không biết)
-                const tems = result.tems.map((t, idx) => ({
-                    ...t,
-                    ghiChu: (list[idx] && list[idx].ghiChuRieng) ? list[idx].ghiChuRieng : t.ghiChu
-                }));
-                
+                const tems = result.tems;
                 setSyncStatus('ok', '✓ Đã tạo ' + tems.length + ' tem');
 
                 // Build HTML cho tất cả tem trong printArea
@@ -1439,14 +1247,21 @@
                 printArea.innerHTML = tems.map(t => buildTemHTML(t)).join('');
                 renderQRsInContainer(printArea, tems);
 
+                // Đợi tất cả QR render xong TRƯỚC KHI in
                 await waitForQRs(printArea, tems.length, 5000);
 
                 showLoading(false);
                 
+                // Show printArea để browser có thể render preview
                 printArea.style.display = 'block';
+                
+                // Mở dialog in
                 window.print();
+                
+                // Ẩn lại sau khi in xong
                 printArea.style.display = 'none';
                 
+                // Sau khi dialog in đóng, hỏi có refresh danh sách không
                 setTimeout(() => {
                     if (confirm('Đã in xong. Cập nhật danh sách tem đã tạo?')) {
                         loadTemList();
@@ -1462,11 +1277,10 @@
 
         function resetTemForm() {
             document.getElementById('temDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('temQuantity').value = '';
             document.getElementById('temCount').value = '1';
             document.getElementById('temNote').value = '';
             document.getElementById('temUnit').value = 'kg';
-            document.getElementById('temDefaultQty').value = '';
-            rerenderTemQtyTable();
             updateTemPreview();
         }
 
@@ -1775,7 +1589,7 @@
             if (event) event.target.classList.add('active');
             if (tabName === 'charts') setTimeout(() => updatePlanChart(), 100);
             if (tabName === 'plan-nhap') renderPlanNhapTable();
-            if (tabName === 'tem-nvl') { rerenderTemQtyTable(); updateTemPreview(); }
+            if (tabName === 'tem-nvl') updateTemPreview();
         }
 
         init();
