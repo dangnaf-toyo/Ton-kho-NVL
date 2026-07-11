@@ -126,6 +126,23 @@
         .tem-logo {
             width: 12mm;
             height: 12mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1.5mm;
+            flex-shrink: 0;
+            overflow: hidden;
+            background: white;
+        }
+        .tem-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .tem-logo .fallback {
+            width: 100%;
+            height: 100%;
             background: #C87941;
             color: white;
             display: flex;
@@ -133,8 +150,6 @@
             justify-content: center;
             font-weight: 700;
             font-size: 3mm;
-            border-radius: 1.5mm;
-            flex-shrink: 0;
             line-height: 1;
         }
         .tem-brand { display: flex; flex-direction: column; }
@@ -181,31 +196,33 @@
             letter-spacing: 0.3mm;
         }
 
+        /* #printArea: mặc định ẩn khi xem màn hình */
+        #printArea { display: none; }
+
         /* Print styles: chỉ in tem, ẩn phần khác */
         @media print {
-            /* Ẩn toàn bộ trang */
-            body > *:not(#printArea) { display: none !important; }
-            /* Hiện printArea về đúng vị trí trang giấy */
+            /* Ẩn header + container (2 con còn lại của body ngoài printArea + loadingOverlay) */
+            .header, .container, .loading-overlay { display: none !important; }
+            /* Hiện printArea */
             #printArea {
                 display: block !important;
                 position: static !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                background: white !important;
             }
             #printArea .tem-nvl {
                 border: 1.5px solid #000 !important;
                 margin: 0 !important;
                 box-shadow: none !important;
                 page-break-after: always;
+                display: flex !important;
             }
             #printArea .tem-nvl:last-child {
                 page-break-after: auto;
             }
             @page { size: 70mm 100mm; margin: 0; }
-            html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+            html, body { margin: 0 !important; padding: 0 !important; background: white !important; height: auto !important; }
         }
         .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
         .loading-overlay.show { display: flex; }
@@ -423,9 +440,6 @@
             </div>
         </div>
 
-        <!-- Print Area (Ẩn khỏi màn hình, hiện khi in) -->
-        <div id="printArea" style="display: none;"></div>
-
         <!-- Tab: Kế Hoạch Nhập Nhôm -->
         <div id="plan-nhap" class="tab-content">
             <div class="section">
@@ -515,6 +529,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Print Area (con trực tiếp của body để CSS print hoạt động đúng) -->
+    <div id="printArea"></div>
 
     <script>
         // ===== CONFIG =====
@@ -1015,6 +1032,12 @@
             }
         }
 
+        // URL logo công ty. Nếu muốn đổi:
+        //   1. Upload ảnh lên Google Drive → Nhấn "Share" → chọn "Anyone with the link"
+        //   2. Copy File ID từ URL: drive.google.com/file/d/[FILE_ID]/view
+        //   3. Thay LOGO_URL bên dưới với format: https://lh3.googleusercontent.com/d/[FILE_ID]
+        const LOGO_URL = 'https://lh3.googleusercontent.com/d/1Da5A4JNUXZsUWeJwc1WW9lhI47_xz9LR';
+
         // ===== TAB IN TEM NVL =====
         function buildTemHTML(tem) {
             // tem: { tagNo, material, tenNVL, ngayNhap, soLuong, donVi, ghiChu }
@@ -1027,7 +1050,11 @@
             return `
                 <div class="tem-nvl">
                     <div class="tem-header">
-                        <div class="tem-logo">TYK</div>
+                        <div class="tem-logo">
+                            <img src="${LOGO_URL}" alt="TYK" 
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="fallback" style="display:none;">TYK</div>
+                        </div>
                         <div class="tem-brand">
                             <div class="brand-name">TOYOTAKI</div>
                             <div class="brand-sub">Die Casting Industry</div>
@@ -1204,8 +1231,14 @@
 
                 showLoading(false);
                 
+                // Show printArea để browser có thể render preview
+                printArea.style.display = 'block';
+                
                 // Mở dialog in
                 window.print();
+                
+                // Ẩn lại sau khi in xong
+                printArea.style.display = 'none';
                 
                 // Sau khi dialog in đóng, hỏi có refresh danh sách không
                 setTimeout(() => {
@@ -1270,7 +1303,9 @@
             printArea.innerHTML = buildTemHTML(tem);
             renderQRsInContainer(printArea, [tem]);
             await waitForQRs(printArea, 1, 3000);
+            printArea.style.display = 'block';
             window.print();
+            printArea.style.display = 'none';
         }
 
         // ===== TAB KẾ HOẠCH NHẬP NHÔM =====
