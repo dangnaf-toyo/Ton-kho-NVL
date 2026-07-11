@@ -107,7 +107,7 @@
             box-sizing: border-box;
             background: white;
             border: 1.5px solid #000;
-            padding: 2mm;
+            padding: 3mm;
             font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
@@ -116,18 +116,16 @@
             color: #000;
             overflow: hidden;
         }
-        /* Header: Logo + Title cùng 1 hàng */
+        /* Header: Logo + Title cùng 1 hàng, KHÔNG có border dưới */
         .tem-header {
             display: flex;
             align-items: center;
-            gap: 2mm;
-            border-bottom: 1.5px solid #000;
-            padding-bottom: 1.5mm;
-            margin-bottom: 1.5mm;
+            gap: 3mm;
+            margin-bottom: 2.5mm;
         }
         .tem-logo {
-            width: 12mm;
-            height: 12mm;
+            width: 14mm;
+            height: 14mm;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -150,65 +148,64 @@
             align-items: center;
             justify-content: center;
             font-weight: 900;
-            font-size: 3.5mm;
+            font-size: 4mm;
             line-height: 1;
         }
         .tem-title {
             flex: 1;
             text-align: center;
-            font-size: 4mm;
+            font-size: 4.2mm;
             font-weight: 900;
             color: #000;
             letter-spacing: 0.3mm;
-            line-height: 1.1;
+            line-height: 1.15;
         }
         
-        .tem-info { flex: 1; font-size: 2.5mm; line-height: 1.35; color: #000; }
-        .tem-info-row { display: flex; margin-bottom: 0.5mm; }
-        .tem-info-label { width: 17mm; font-weight: 700; color: #000; flex-shrink: 0; }
+        /* Info block - KHÔNG border, spacing thoáng */
+        .tem-info { font-size: 2.7mm; line-height: 1.5; color: #000; margin-bottom: 2.5mm; }
+        .tem-info-row { display: flex; margin-bottom: 0.8mm; }
+        .tem-info-label { width: 18mm; font-weight: 700; color: #000; flex-shrink: 0; }
         .tem-info-colon { width: 2mm; flex-shrink: 0; font-weight: 700; }
         .tem-info-value { flex: 1; font-weight: 700; word-break: break-word; color: #000; }
-        .tem-info-value.big { font-size: 2.9mm; font-weight: 900; }
+        .tem-info-value.big { font-size: 3.1mm; font-weight: 900; }
         
-        .tem-qr-wrapper {
+        /* QR area - CĂN GIỮA trong không gian còn lại, KHÔNG border */
+        .tem-qr-block {
+            flex: 1;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            margin-top: 1mm;
-            padding-top: 1mm;
-            border-top: 1px dashed #000;
+            justify-content: center;
         }
         .tem-qr-wrapper > div {
-            width: 24mm;
-            height: 24mm;
+            width: 28mm;
+            height: 28mm;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .tem-qr-wrapper svg {
-            width: 24mm !important;
-            height: 24mm !important;
+            width: 28mm !important;
+            height: 28mm !important;
             display: block;
         }
-        
         .tem-tag-large {
             text-align: center;
             font-family: 'Courier New', monospace;
-            font-size: 2.4mm;
+            font-size: 2.6mm;
             font-weight: 900;
-            margin-top: 0.5mm;
-            letter-spacing: 0.2mm;
+            margin-top: 1mm;
+            letter-spacing: 0.3mm;
             color: #000;
         }
         
+        /* Footer - KHÔNG border, đen đậm */
         .tem-footer {
             text-align: center;
-            font-size: 2mm;
-            font-weight: 700;
+            font-size: 2.1mm;
+            font-weight: 900;
             color: #000;
-            margin-top: 1mm;
-            padding-top: 1mm;
-            border-top: 1px solid #000;
+            margin-top: 2mm;
             letter-spacing: 0.15mm;
         }
 
@@ -1130,10 +1127,12 @@
                             <span class="tem-info-value" style="font-size: 2.3mm;">${tem.ghiChu}</span>
                         </div>` : ''}
                     </div>
-                    <div class="tem-qr-wrapper">
-                        <div id="${qrId}"></div>
+                    <div class="tem-qr-block">
+                        <div class="tem-qr-wrapper">
+                            <div id="${qrId}"></div>
+                        </div>
+                        <div class="tem-tag-large">${tem.tagNo}</div>
                     </div>
-                    <div class="tem-tag-large">${tem.tagNo}</div>
                     <div class="tem-footer">CÔNG TY CỔ PHẦN CÔNG NGHIỆP TOYOTAKI</div>
                 </div>
             `;
