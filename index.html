@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Quản Lý Tồn Kho NVL - TOYOTAKI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -107,7 +107,7 @@
             box-sizing: border-box;
             background: white;
             border: 2px solid #000;
-            padding: 3mm;
+            padding: 2.5mm;
             font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
@@ -118,19 +118,17 @@
         .tem-header {
             display: flex;
             align-items: center;
-            gap: 2mm;
+            justify-content: center;
             border-bottom: 1.5px solid #000;
             padding-bottom: 2mm;
             margin-bottom: 2mm;
         }
         .tem-logo {
-            width: 12mm;
-            height: 12mm;
+            width: 15mm;
+            height: 15mm;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 1.5mm;
-            flex-shrink: 0;
             overflow: hidden;
             background: white;
         }
@@ -143,57 +141,75 @@
         .tem-logo .fallback {
             width: 100%;
             height: 100%;
-            background: #C87941;
+            background: #000;
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
-            font-size: 3mm;
+            font-weight: 900;
+            font-size: 4mm;
             line-height: 1;
         }
-        .tem-brand { display: flex; flex-direction: column; }
-        .tem-brand .brand-name { font-size: 3mm; font-weight: 700; line-height: 1.1; }
-        .tem-brand .brand-sub { font-size: 2mm; color: #666; line-height: 1.1; margin-top: 0.5mm; }
         
         .tem-title {
             text-align: center;
-            font-size: 3.5mm;
-            font-weight: 700;
-            padding: 1mm 0;
-            background: #000;
-            color: white;
+            font-size: 4mm;
+            font-weight: 900;
+            padding: 1.5mm 0;
+            color: #000;
             margin-bottom: 2mm;
-            letter-spacing: 0.5mm;
+            letter-spacing: 0.3mm;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
         }
         
-        .tem-info { flex: 1; font-size: 2.6mm; line-height: 1.4; }
-        .tem-info-row { display: flex; margin-bottom: 0.5mm; }
-        .tem-info-label { width: 20mm; font-weight: 600; color: #333; flex-shrink: 0; }
-        .tem-info-colon { width: 2mm; flex-shrink: 0; }
-        .tem-info-value { flex: 1; font-weight: 700; word-break: break-word; }
-        .tem-info-value.big { font-size: 3.2mm; }
+        .tem-info { flex: 1; font-size: 2.8mm; line-height: 1.4; color: #000; }
+        .tem-info-row { display: flex; margin-bottom: 0.8mm; }
+        .tem-info-label { width: 20mm; font-weight: 700; color: #000; flex-shrink: 0; }
+        .tem-info-colon { width: 2mm; flex-shrink: 0; font-weight: 700; }
+        .tem-info-value { flex: 1; font-weight: 700; word-break: break-word; color: #000; }
+        .tem-info-value.big { font-size: 3.3mm; font-weight: 900; }
         
         .tem-qr-wrapper {
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-top: 2mm;
-            padding-top: 2mm;
-            border-top: 1px dashed #999;
+            margin-top: 1.5mm;
+            padding-top: 1.5mm;
+            border-top: 1px dashed #000;
         }
-        .tem-qr-wrapper canvas, .tem-qr-wrapper img {
+        .tem-qr-wrapper > div {
+            width: 28mm;
+            height: 28mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tem-qr-wrapper svg {
             width: 28mm !important;
             height: 28mm !important;
+            display: block;
         }
         
         .tem-tag-large {
             text-align: center;
             font-family: 'Courier New', monospace;
-            font-size: 2.5mm;
-            font-weight: 700;
+            font-size: 2.6mm;
+            font-weight: 900;
             margin-top: 1mm;
             letter-spacing: 0.3mm;
+            color: #000;
+        }
+        
+        .tem-footer {
+            text-align: center;
+            font-size: 2.3mm;
+            font-weight: 700;
+            color: #000;
+            margin-top: 1.5mm;
+            padding-top: 1.5mm;
+            border-top: 1.5px solid #000;
+            letter-spacing: 0.2mm;
         }
 
         /* #printArea: mặc định ẩn khi xem màn hình */
@@ -1055,10 +1071,6 @@
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                             <div class="fallback" style="display:none;">TYK</div>
                         </div>
-                        <div class="tem-brand">
-                            <div class="brand-name">TOYOTAKI</div>
-                            <div class="brand-sub">Die Casting Industry</div>
-                        </div>
                     </div>
                     <div class="tem-title">TEM NGUYÊN VẬT LIỆU</div>
                     <div class="tem-info">
@@ -1096,38 +1108,47 @@
                         <div class="tem-info-row">
                             <span class="tem-info-label">Ghi chú</span>
                             <span class="tem-info-colon">:</span>
-                            <span class="tem-info-value" style="font-weight:normal; font-size: 2.4mm;">${tem.ghiChu}</span>
+                            <span class="tem-info-value" style="font-size: 2.5mm;">${tem.ghiChu}</span>
                         </div>` : ''}
                     </div>
                     <div class="tem-qr-wrapper">
                         <div id="${qrId}"></div>
                     </div>
                     <div class="tem-tag-large">${tem.tagNo}</div>
+                    <div class="tem-footer">CÔNG TY CỔ PHẦN CÔNG NGHIỆP TOYOTAKI</div>
                 </div>
             `;
         }
 
+        // Sinh SVG QR code từ text (dùng thư viện qrcode-generator)
+        function generateQRSvg(text, sizeInPx) {
+            try {
+                // typeNumber = 0 = auto detect, error correction M
+                const qr = qrcode(0, 'M');
+                qr.addData(text);
+                qr.make();
+                // Sinh SVG scale khớp với sizeInPx
+                return qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+            } catch (e) {
+                console.error('QR generation error:', e);
+                return '<span style="color:red;font-size:2mm">QR error: ' + e.message + '</span>';
+            }
+        }
+
         // Render QR code trên element có id đã sinh
         function renderQRsInContainer(container, tems) {
-            // Gán ID theo thứ tự tem để renderer QR đúng
             const wrappers = container.querySelectorAll('.tem-qr-wrapper > div');
             wrappers.forEach((div, idx) => {
                 if (!tems[idx]) return;
                 const tem = tems[idx];
                 const qrContent = [tem.tagNo, tem.material, tem.tenNVL, tem.ngayNhap, tem.soLuong, tem.donVi].join('>');
-                div.innerHTML = ''; // Clear
-                try {
-                    new QRCode(div, {
-                        text: qrContent,
-                        width: 106,  // ~28mm ở 96dpi = 28/25.4*96 ≈ 106
-                        height: 106,
-                        colorDark: '#000000',
-                        colorLight: '#ffffff',
-                        correctLevel: QRCode.CorrectLevel.M
-                    });
-                } catch (e) {
-                    div.innerHTML = '<span style="color:red;font-size:2mm">QR error</span>';
-                    console.error('QR error:', e);
+                div.innerHTML = generateQRSvg(qrContent);
+                // Force SVG size = 28mm
+                const svg = div.querySelector('svg');
+                if (svg) {
+                    svg.style.width = '28mm';
+                    svg.style.height = '28mm';
+                    svg.setAttribute('shape-rendering', 'crispEdges');
                 }
             });
         }
@@ -1158,19 +1179,19 @@
             renderQRsInContainer(container, [previewTem]);
         }
 
-        // Đợi tất cả QR render xong (canvas/img xuất hiện)
+        // Đợi tất cả QR render xong (SVG xuất hiện)
         function waitForQRs(container, expectedCount, maxWaitMs) {
             return new Promise((resolve) => {
                 const start = Date.now();
                 const check = () => {
-                    const qrImgs = container.querySelectorAll('.tem-qr-wrapper canvas, .tem-qr-wrapper img');
-                    if (qrImgs.length >= expectedCount) {
-                        // Thêm 200ms cho browser hoàn tất layout
-                        setTimeout(resolve, 200);
+                    const qrSvgs = container.querySelectorAll('.tem-qr-wrapper svg');
+                    if (qrSvgs.length >= expectedCount) {
+                        // Thêm 100ms cho browser hoàn tất layout
+                        setTimeout(resolve, 100);
                         return;
                     }
                     if (Date.now() - start > (maxWaitMs || 3000)) {
-                        console.warn('QR wait timeout, có', qrImgs.length, '/', expectedCount);
+                        console.warn('QR wait timeout, có', qrSvgs.length, '/', expectedCount);
                         resolve();
                         return;
                     }
