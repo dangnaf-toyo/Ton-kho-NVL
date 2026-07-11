@@ -183,11 +183,29 @@
 
         /* Print styles: chỉ in tem, ẩn phần khác */
         @media print {
-            body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; }
-            .tem-nvl { border: 1.5px solid #000 !important; margin: 0; box-shadow: none; }
+            /* Ẩn toàn bộ trang */
+            body > *:not(#printArea) { display: none !important; }
+            /* Hiện printArea về đúng vị trí trang giấy */
+            #printArea {
+                display: block !important;
+                position: static !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #printArea .tem-nvl {
+                border: 1.5px solid #000 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                page-break-after: always;
+            }
+            #printArea .tem-nvl:last-child {
+                page-break-after: auto;
+            }
             @page { size: 70mm 100mm; margin: 0; }
+            html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
         }
         .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
         .loading-overlay.show { display: flex; }
@@ -405,8 +423,8 @@
             </div>
         </div>
 
-        <!-- Print Area (Ẩn, chỉ hiện khi in) -->
-        <div id="printArea" style="position: absolute; left: -10000px; top: 0;"></div>
+        <!-- Print Area (Ẩn khỏi màn hình, hiện khi in) -->
+        <div id="printArea" style="display: none;"></div>
 
         <!-- Tab: Kế Hoạch Nhập Nhôm -->
         <div id="plan-nhap" class="tab-content">
@@ -1113,6 +1131,28 @@
             renderQRsInContainer(container, [previewTem]);
         }
 
+        // Đợi tất cả QR render xong (canvas/img xuất hiện)
+        function waitForQRs(container, expectedCount, maxWaitMs) {
+            return new Promise((resolve) => {
+                const start = Date.now();
+                const check = () => {
+                    const qrImgs = container.querySelectorAll('.tem-qr-wrapper canvas, .tem-qr-wrapper img');
+                    if (qrImgs.length >= expectedCount) {
+                        // Thêm 200ms cho browser hoàn tất layout
+                        setTimeout(resolve, 200);
+                        return;
+                    }
+                    if (Date.now() - start > (maxWaitMs || 3000)) {
+                        console.warn('QR wait timeout, có', qrImgs.length, '/', expectedCount);
+                        resolve();
+                        return;
+                    }
+                    setTimeout(check, 50);
+                };
+                check();
+            });
+        }
+
         async function printTem() {
             const form = getFormValuesForTem();
             const count = parseInt(document.getElementById('temCount').value) || 1;
@@ -1159,18 +1199,20 @@
                 printArea.innerHTML = tems.map(t => buildTemHTML(t)).join('');
                 renderQRsInContainer(printArea, tems);
 
-                // Đợi QR render xong rồi in
+                // Đợi tất cả QR render xong TRƯỚC KHI in
+                await waitForQRs(printArea, tems.length, 5000);
+
+                showLoading(false);
+                
+                // Mở dialog in
+                window.print();
+                
+                // Sau khi dialog in đóng, hỏi có refresh danh sách không
                 setTimeout(() => {
-                    showLoading(false);
-                    window.print();
-                    
-                    // Sau khi in, hỏi có cần refresh danh sách tem không
-                    setTimeout(() => {
-                        if (confirm('Đã in xong. Cập nhật danh sách tem đã tạo?')) {
-                            loadTemList();
-                        }
-                    }, 500);
-                }, 500);
+                    if (confirm('Đã in xong. Cập nhật danh sách tem đã tạo?')) {
+                        loadTemList();
+                    }
+                }, 800);
 
             } catch (error) {
                 showLoading(false);
@@ -1222,12 +1264,13 @@
             }
         }
 
-        function reprintTem(tem) {
+        async function reprintTem(tem) {
             // In lại 1 tem đã tồn tại (không sinh Tag No mới)
             const printArea = document.getElementById('printArea');
             printArea.innerHTML = buildTemHTML(tem);
             renderQRsInContainer(printArea, [tem]);
-            setTimeout(() => window.print(), 300);
+            await waitForQRs(printArea, 1, 3000);
+            window.print();
         }
 
         // ===== TAB KẾ HOẠCH NHẬP NHÔM =====
