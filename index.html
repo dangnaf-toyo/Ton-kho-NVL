@@ -1238,7 +1238,7 @@
             masterMaterialsList.forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m.ma;
-                opt.textContent = m.ma + (m.ten && m.ten !== m.ma ? ' — ' + m.ten : '');
+                opt.textContent = m.ma;
                 temSelect.appendChild(opt);
             });
             
