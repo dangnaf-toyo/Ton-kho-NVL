@@ -201,12 +201,12 @@
         .tem-header {
             display: flex;
             align-items: center;
-            gap: 3mm;
-            margin-bottom: 3mm;
+            gap: 2mm;
+            margin-bottom: 2mm;
         }
         .tem-logo {
-            width: 18mm;
-            height: 18mm;
+            width: 14mm;
+            height: 14mm;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -229,26 +229,28 @@
             align-items: center;
             justify-content: center;
             font-weight: 900;
-            font-size: 5mm;
+            font-size: 4mm;
             line-height: 1;
         }
         .tem-title {
             flex: 1;
             text-align: center;
-            font-size: 5.2mm;
+            font-size: 4.5mm;
             font-weight: 900;
             color: #000;
-            letter-spacing: 0.2mm;
+            letter-spacing: 0.15mm;
             line-height: 1.1;
         }
         
         /* Info block - font ĐẬM đồng đều */
-        .tem-info { font-size: 3.4mm; line-height: 1.5; color: #000; margin-bottom: 2mm; font-weight: 900; }
-        .tem-info-row { display: flex; margin-bottom: 1mm; }
-        .tem-info-label { width: 21mm; font-weight: 900; color: #000; flex-shrink: 0; }
+        .tem-info { font-size: 3mm; line-height: 1.4; color: #000; margin-bottom: 1.5mm; font-weight: 900; }
+        .tem-info-row { display: flex; margin-bottom: 0.6mm; align-items: baseline; }
+        .tem-info-label { width: 18mm; font-weight: 900; color: #000; flex-shrink: 0; }
         .tem-info-colon { width: 2mm; flex-shrink: 0; font-weight: 900; }
-        .tem-info-value { flex: 1; font-weight: 900; word-break: break-word; color: #000; }
-        .tem-info-value.big { font-size: 3.8mm; font-weight: 900; }
+        .tem-info-value { flex: 1; font-weight: 900; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tem-info-value.big { font-size: 3.2mm; font-weight: 900; }
+        .tem-info-value.tag { font-size: 3.1mm; letter-spacing: -0.05mm; }
+        .tem-info-value.name { white-space: normal; font-size: 2.8mm; line-height: 1.25; }
         
         /* QR area - CĂN GIỮA trong không gian còn lại */
         .tem-qr-block {
@@ -257,29 +259,31 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            min-height: 30mm;
         }
         .tem-qr-wrapper > div {
-            width: 32mm;
-            height: 32mm;
+            width: 30mm;
+            height: 30mm;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .tem-qr-wrapper svg {
-            width: 32mm !important;
-            height: 32mm !important;
+            width: 30mm !important;
+            height: 30mm !important;
             display: block;
         }
         
         /* Footer - to hơn, đậm hơn */
         .tem-footer {
             text-align: center;
-            font-size: 2.5mm;
+            font-size: 2.3mm;
             font-weight: 900;
             color: #000;
-            margin-top: 2mm;
-            letter-spacing: 0.1mm;
-            line-height: 1.2;
+            margin-top: 1.5mm;
+            letter-spacing: 0mm;
+            line-height: 1.15;
+            flex-shrink: 0;
         }
 
         /* Bảng nhập số lượng nhiều tem */
@@ -1924,7 +1928,7 @@
                         <div class="tem-info-row">
                             <span class="tem-info-label">Tag No</span>
                             <span class="tem-info-colon">:</span>
-                            <span class="tem-info-value big">${tem.tagNo}</span>
+                            <span class="tem-info-value tag">${tem.tagNo}</span>
                         </div>
                         <div class="tem-info-row">
                             <span class="tem-info-label">Mã NVL</span>
@@ -1934,7 +1938,7 @@
                         <div class="tem-info-row">
                             <span class="tem-info-label">Tên NVL</span>
                             <span class="tem-info-colon">:</span>
-                            <span class="tem-info-value">${tem.tenNVL}</span>
+                            <span class="tem-info-value name">${tem.tenNVL}</span>
                         </div>
                         <div class="tem-info-row">
                             <span class="tem-info-label">Ngày nhập</span>
