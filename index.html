@@ -906,7 +906,7 @@
                 const stock = getCurrentActualStock(code);
                 const planToday = getPlanTodayForMaterial(code);
                 const bw = allData.settings[code] || 5;
-                const lsl = planToday - bw;
+                const lsl = Math.max(0, planToday - bw);
                 const usl = planToday + bw;
 
                 let status, statusText;
@@ -994,7 +994,7 @@
             // Kế hoạch (kg → tấn)
             const planStockTons = plan.tonDuKien.map(v => v / 1000);
             const bw = allData.settings[currentMaterial] || 5;
-            const lslData = planStockTons.map(v => v - bw);
+            const lslData = planStockTons.map(v => Math.max(0, v - bw));
             const uslData = planStockTons.map(v => v + bw);
 
             // Tồn thực tế: tính từ tồn đầu kỳ + giao dịch
