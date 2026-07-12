@@ -186,24 +186,27 @@
             box-sizing: border-box;
             background: white;
             padding: 3mm;
-            font-family: Arial, sans-serif;
+            /* Dùng nhiều font fallback để in đậm đều trên các máy in */
+            font-family: 'Arial Black', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+            font-weight: 900;
             display: flex;
             flex-direction: column;
             page-break-inside: avoid;
             page-break-after: always;
             color: #000;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
-        /* Header: Logo + Title cùng 1 hàng, KHÔNG có border dưới */
+        /* Header: Logo + Title cùng 1 hàng */
         .tem-header {
             display: flex;
             align-items: center;
             gap: 3mm;
-            margin-bottom: 2.5mm;
+            margin-bottom: 3mm;
         }
         .tem-logo {
-            width: 14mm;
-            height: 14mm;
+            width: 18mm;
+            height: 18mm;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -226,28 +229,28 @@
             align-items: center;
             justify-content: center;
             font-weight: 900;
-            font-size: 4mm;
+            font-size: 5mm;
             line-height: 1;
         }
         .tem-title {
             flex: 1;
             text-align: center;
-            font-size: 4.2mm;
+            font-size: 5.2mm;
             font-weight: 900;
             color: #000;
-            letter-spacing: 0.3mm;
-            line-height: 1.15;
+            letter-spacing: 0.2mm;
+            line-height: 1.1;
         }
         
-        /* Info block - KHÔNG border, spacing thoáng */
-        .tem-info { font-size: 2.7mm; line-height: 1.5; color: #000; margin-bottom: 2.5mm; }
-        .tem-info-row { display: flex; margin-bottom: 0.8mm; }
-        .tem-info-label { width: 18mm; font-weight: 700; color: #000; flex-shrink: 0; }
-        .tem-info-colon { width: 2mm; flex-shrink: 0; font-weight: 700; }
-        .tem-info-value { flex: 1; font-weight: 700; word-break: break-word; color: #000; }
-        .tem-info-value.big { font-size: 3.1mm; font-weight: 900; }
+        /* Info block - font ĐẬM đồng đều */
+        .tem-info { font-size: 3.4mm; line-height: 1.5; color: #000; margin-bottom: 2mm; font-weight: 900; }
+        .tem-info-row { display: flex; margin-bottom: 1mm; }
+        .tem-info-label { width: 21mm; font-weight: 900; color: #000; flex-shrink: 0; }
+        .tem-info-colon { width: 2mm; flex-shrink: 0; font-weight: 900; }
+        .tem-info-value { flex: 1; font-weight: 900; word-break: break-word; color: #000; }
+        .tem-info-value.big { font-size: 3.8mm; font-weight: 900; }
         
-        /* QR area - CĂN GIỮA trong không gian còn lại, KHÔNG border */
+        /* QR area - CĂN GIỮA trong không gian còn lại */
         .tem-qr-block {
             flex: 1;
             display: flex;
@@ -256,35 +259,27 @@
             justify-content: center;
         }
         .tem-qr-wrapper > div {
-            width: 28mm;
-            height: 28mm;
+            width: 32mm;
+            height: 32mm;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .tem-qr-wrapper svg {
-            width: 28mm !important;
-            height: 28mm !important;
+            width: 32mm !important;
+            height: 32mm !important;
             display: block;
         }
-        .tem-tag-large {
-            text-align: center;
-            font-family: 'Courier New', monospace;
-            font-size: 2.6mm;
-            font-weight: 900;
-            margin-top: 1mm;
-            letter-spacing: 0.3mm;
-            color: #000;
-        }
         
-        /* Footer - KHÔNG border, đen đậm */
+        /* Footer - to hơn, đậm hơn */
         .tem-footer {
             text-align: center;
-            font-size: 2.1mm;
+            font-size: 2.5mm;
             font-weight: 900;
             color: #000;
             margin-top: 2mm;
-            letter-spacing: 0.15mm;
+            letter-spacing: 0.1mm;
+            line-height: 1.2;
         }
 
         /* Bảng nhập số lượng nhiều tem */
@@ -318,6 +313,12 @@
                 box-shadow: none !important;
                 page-break-after: always;
                 display: flex !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                font-weight: 900 !important;
+            }
+            #printArea .tem-nvl * {
+                font-weight: 900 !important;
             }
             #printArea .tem-nvl:last-child {
                 page-break-after: auto;
@@ -1961,7 +1962,6 @@
                         <div class="tem-qr-wrapper">
                             <div id="${qrId}"></div>
                         </div>
-                        <div class="tem-tag-large">${tem.tagNo}</div>
                     </div>
                     <div class="tem-footer">CÔNG TY CỔ PHẦN CÔNG NGHIỆP TOYOTAKI</div>
                 </div>
