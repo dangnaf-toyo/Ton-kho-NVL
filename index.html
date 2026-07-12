@@ -373,7 +373,7 @@
             </div>
 
             <div class="card">
-                <div class="card-title">📊 Tồn Hiện Tại Sau Giao Dịch (dự kiến)</div>
+                <div class="card-title">📊 Tồn Hiện Tại Sau Giao Dịch (dự kiến so với kế hoạch hôm nay)</div>
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -381,6 +381,9 @@
                             <th>Tồn Hiện Tại (Tấn)</th>
                             <th>Δ Sau Giao Dịch (Tấn)</th>
                             <th>Tồn Dự Kiến (Tấn)</th>
+                            <th>LSL (Tấn)</th>
+                            <th>USL (Tấn)</th>
+                            <th>Trạng Thái</th>
                         </tr>
                     </thead>
                     <tbody id="cartPreviewTable"></tbody>
@@ -1242,10 +1245,17 @@
                 btn.style.opacity = '0.5';
             } else {
                 btn.disabled = false;
-                const warns = scanCart.filter(x => x.validationStatus === 'fifo-warn').length;
-                btn.textContent = warns > 0 
-                    ? `✓ Ghi Nhận Tất Cả (${warns} cảnh báo FIFO)` 
-                    : '✓ Ghi Nhận Tất Cả';
+                const fifoWarns = scanCart.filter(x => x.validationStatus === 'fifo-warn').length;
+                const planWarns = currentPlanWarnings ? currentPlanWarnings.length : 0;
+                
+                let label = '✓ Ghi Nhận Tất Cả';
+                const warnParts = [];
+                if (fifoWarns > 0) warnParts.push(`${fifoWarns} FIFO`);
+                if (planWarns > 0) warnParts.push(`${planWarns} lệch KH`);
+                if (warnParts.length > 0) {
+                    label = `⚠️ Ghi Nhận (${warnParts.join(', ')})`;
+                }
+                btn.textContent = label;
                 btn.style.opacity = '1';
             }
         }
@@ -1336,6 +1346,7 @@
         }
 
         // Bảng preview tồn dự kiến sau giao dịch (chỉ tính pallet ok/fifo-warn)
+        // Trả về mảng warnings: [{material, after, lsl, usl, status: 'high'|'low'}]
         function updateCartPreviewTable() {
             const tbody = document.getElementById('cartPreviewTable');
             const txType = document.getElementById('cartTxType').value;
@@ -1348,26 +1359,59 @@
             });
             
             if (Object.keys(byMat).length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--gray);">Chưa có pallet nào (hoặc chưa xác thực xong)</td></tr>';
-                return;
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--gray);">Chưa có pallet nào (hoặc chưa xác thực xong)</td></tr>';
+                return [];
             }
             
+            const warnings = [];
             let html = '';
             Object.keys(byMat).sort().forEach(mat => {
                 const current = allData.currentStock[mat] || 0;
                 const delta = txType === 'IN' ? byMat[mat] : -byMat[mat];
                 const after = Math.max(0, current + delta);
+                const planToday = getPlanTodayForMaterial(mat);
+                const bw = allData.settings[mat] || 5;
+                const lsl = Math.max(0, planToday - bw);
+                const usl = planToday + bw;
+                
+                let status = 'ok';
+                let rowBg = '';
+                let statusLabel = '<span style="color: var(--success); font-weight: 700;">✓ Bình thường</span>';
+                
+                if (after > usl) {
+                    status = 'high';
+                    rowBg = 'background: #fff3e0;';
+                    statusLabel = '<span style="color: #E65100; font-weight: 700;">⚠ Tồn kho cao</span>';
+                    warnings.push({ material: mat, after: after, lsl: lsl, usl: usl, status: 'high', delta: after - usl });
+                } else if (after < lsl) {
+                    status = 'low';
+                    rowBg = 'background: #ffebee;';
+                    statusLabel = '<span style="color: var(--danger); font-weight: 700;">⚠ Tồn kho thấp</span>';
+                    warnings.push({ material: mat, after: after, lsl: lsl, usl: usl, status: 'low', delta: lsl - after });
+                }
+                
                 const deltaColor = delta > 0 ? 'var(--success)' : 'var(--danger)';
                 const deltaSign = delta > 0 ? '+' : '';
-                html += `<tr>
+                html += `<tr style="${rowBg}">
                     <td><strong>${mat}</strong></td>
                     <td>${current.toFixed(3)}</td>
                     <td style="color: ${deltaColor}; font-weight: 700;">${deltaSign}${delta.toFixed(3)}</td>
                     <td style="color: var(--primary); font-weight: 700;">${after.toFixed(3)}</td>
+                    <td style="font-size: 0.85rem; color: var(--gray);">${lsl.toFixed(2)}</td>
+                    <td style="font-size: 0.85rem; color: var(--gray);">${usl.toFixed(2)}</td>
+                    <td>${statusLabel}</td>
                 </tr>`;
             });
             tbody.innerHTML = html;
+            
+            // Lưu warnings vào biến global để submitCartTransaction đọc
+            currentPlanWarnings = warnings;
+            
+            return warnings;
         }
+        
+        // Lưu cảnh báo hiện tại của giỏ
+        let currentPlanWarnings = [];
 
         // Gửi giỏ hàng lên Apps Script
         async function submitCartTransaction() {
@@ -1388,9 +1432,25 @@
             const txType = document.getElementById('cartTxType').value;
             const typeText = txType === 'IN' ? 'NHẬP' : 'XUẤT';
             const fifoWarns = validItems.filter(x => x.validationStatus === 'fifo-warn').length;
+            const planWarns = currentPlanWarnings || [];
             
             let confirmMsg = `Sẽ ${typeText} kho ${validItems.length} pallet.`;
-            if (fifoWarns > 0) confirmMsg += `\n\n⚠️ Có ${fifoWarns} pallet có cảnh báo FIFO (vẫn tiếp tục xuất pallet mới, không dùng pallet cũ).`;
+            
+            if (fifoWarns > 0) {
+                confirmMsg += `\n\n⚠️ FIFO: có ${fifoWarns} pallet còn pallet cũ hơn chưa xuất.`;
+            }
+            
+            if (planWarns.length > 0) {
+                confirmMsg += `\n\n⚠️ CẢNH BÁO KẾ HOẠCH: ${planWarns.length} mã sẽ VƯỢT NGOÀI kế hoạch sau giao dịch:`;
+                planWarns.forEach(w => {
+                    if (w.status === 'high') {
+                        confirmMsg += `\n  • ${w.material}: Tồn dự kiến ${w.after.toFixed(3)} tấn > USL ${w.usl.toFixed(2)} tấn (vượt +${w.delta.toFixed(3)})`;
+                    } else {
+                        confirmMsg += `\n  • ${w.material}: Tồn dự kiến ${w.after.toFixed(3)} tấn < LSL ${w.lsl.toFixed(2)} tấn (thiếu -${w.delta.toFixed(3)})`;
+                    }
+                });
+            }
+            
             if (errorItems.length > 0) confirmMsg += `\n\n(${errorItems.length} pallet lỗi sẽ bị bỏ qua)`;
             confirmMsg += '\n\nTiếp tục?';
             
@@ -1416,16 +1476,47 @@
                 
                 setSyncStatus('ok', '✓ Đã ghi ' + result.processedCount + ' giao dịch');
                 
+                // Fetch dữ liệu mới để tính lại cảnh báo LSL/USL thực tế
+                await loadDataFromSheets();
+                
+                // Tính cảnh báo sau khi ghi thực tế (dựa trên tồn mới nhất, tính riêng cho các mã trong giao dịch vừa rồi)
+                const affectedMats = [...new Set(validItems.map(x => x.material))];
+                const postWarnings = [];
+                affectedMats.forEach(mat => {
+                    const current = allData.currentStock[mat] || 0;
+                    const planToday = getPlanTodayForMaterial(mat);
+                    const bw = allData.settings[mat] || 5;
+                    const lsl = Math.max(0, planToday - bw);
+                    const usl = planToday + bw;
+                    
+                    if (current > usl) {
+                        postWarnings.push({ material: mat, current: current, lsl: lsl, usl: usl, status: 'high', delta: current - usl });
+                    } else if (current < lsl) {
+                        postWarnings.push({ material: mat, current: current, lsl: lsl, usl: usl, status: 'low', delta: lsl - current });
+                    }
+                });
+                
                 let msg = `✓ Ghi nhận ${result.processedCount} giao dịch ${typeText} thành công!`;
                 if (result.errors && result.errors.length > 0) {
                     msg += '\n\n⚠️ Một số pallet có lỗi:\n' + result.errors.join('\n');
                 }
+                if (postWarnings.length > 0) {
+                    msg += `\n\n⚠️ CẢNH BÁO: ${postWarnings.length} mã đang lệch kế hoạch:`;
+                    postWarnings.forEach(w => {
+                        if (w.status === 'high') {
+                            msg += `\n  • ${w.material}: Tồn ${w.current.toFixed(3)} tấn > USL ${w.usl.toFixed(2)} tấn (vượt +${w.delta.toFixed(3)})`;
+                        } else {
+                            msg += `\n  • ${w.material}: Tồn ${w.current.toFixed(3)} tấn < LSL ${w.lsl.toFixed(2)} tấn (thiếu -${w.delta.toFixed(3)})`;
+                        }
+                    });
+                    msg += '\n\nKiểm tra tab "Tổng Quan" để xem chi tiết.';
+                }
                 alert(msg);
                 
-                // Clear giỏ và reload
+                // Clear giỏ
                 scanCart = [];
+                currentPlanWarnings = [];
                 renderCart();
-                await loadDataFromSheets();
                 focusQRInput();
                 
             } catch (error) {
