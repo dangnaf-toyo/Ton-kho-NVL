@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Quản Lý Tồn Kho NVL - TOYOTAKI</title>
+    <title>Quản Lý Tồn Kho Nguyên Vật Liệu - TOYOTAKI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
@@ -16,8 +16,12 @@
         }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--light); color: var(--dark); }
         .header { background: var(--dark); color: white; padding: 1.2rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .header-title { font-size: 1.5rem; font-weight: 600; }
-        .header-brand { font-size: 0.75rem; color: var(--primary); font-weight: 600; letter-spacing: 1px; }
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .header-logo { width: 52px; height: 52px; flex-shrink: 0; background: white; border-radius: 6px; padding: 4px; display: flex; align-items: center; justify-content: center; }
+        .header-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .header-logo .fallback { width: 100%; height: 100%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.1rem; border-radius: 4px; }
+        .header-title { font-size: 1.4rem; font-weight: 700; letter-spacing: 0.3px; }
+        .header-brand { font-size: 0.72rem; color: var(--primary); font-weight: 700; letter-spacing: 1px; margin-top: 2px; }
         .sync-status { font-size: 0.85rem; padding: 0.4rem 0.8rem; border-radius: 20px; background: rgba(255,255,255,0.1); }
         .sync-status.ok { color: #4CAF50; }
         .sync-status.error { color: #f44336; }
@@ -331,6 +335,13 @@
             .chart-container { height: 300px; }
             .score-card { grid-template-columns: 1fr; }
             #overview-grid { grid-template-columns: 1fr; }
+            /* Header mobile: giảm font và padding, logo nhỏ hơn */
+            .header { padding: 0.8rem 1rem; }
+            .header-left { gap: 0.6rem; }
+            .header-logo { width: 40px; height: 40px; padding: 3px; }
+            .header-title { font-size: 0.95rem; line-height: 1.15; }
+            .header-brand { font-size: 0.6rem; }
+            .sync-status { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
         }
     </style>
 </head>
@@ -341,9 +352,16 @@
     </div>
 
     <div class="header">
-        <div>
-            <div class="header-title">Quản Lý Tồn Kho NVL</div>
-            <div class="header-brand">TOYOTAKI — DIE CASTING</div>
+        <div class="header-left">
+            <div class="header-logo">
+                <img src="https://lh3.googleusercontent.com/d/1Da5A4JNUXZsUWeJwc1WW9lhI47_xz9LR" alt="TYK"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="fallback" style="display:none;">TYK</div>
+            </div>
+            <div>
+                <div class="header-title">QUẢN LÝ TỒN KHO NGUYÊN VẬT LIỆU</div>
+                <div class="header-brand">CÔNG TY CỔ PHẦN CÔNG NGHIỆP TOYOTAKI</div>
+            </div>
         </div>
         <div><span class="sync-status" id="syncStatus">⏳ Đang kết nối...</span></div>
     </div>
@@ -473,8 +491,8 @@
                             <th>Tồn Hiện Tại (Tấn)</th>
                             <th>Δ Sau Giao Dịch (Tấn)</th>
                             <th>Tồn Dự Kiến (Tấn)</th>
-                            <th>LSL (Tấn)</th>
-                            <th>USL (Tấn)</th>
+                            <th>Min (Tấn)</th>
+                            <th>Max (Tấn)</th>
                             <th>Trạng Thái</th>
                         </tr>
                     </thead>
@@ -644,7 +662,7 @@
         <div id="settings" class="tab-content">
             <div class="section">
                 <div class="section-title">⚙️ Cài Đặt Bề Rộng Quản Lý</div>
-                <div class="alert alert-info">💡 LSL = Kế Hoạch - Bề Rộng | USL = Kế Hoạch + Bề Rộng</div>
+                <div class="alert alert-info">💡 Min = Kế Hoạch - Bề Rộng | Max = Kế Hoạch + Bề Rộng</div>
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -909,11 +927,11 @@
                             <div class="stat-value">${planToday.toFixed(2)}</div>
                         </div>
                         <div class="stat-small">
-                            <div class="stat-label">LSL</div>
+                            <div class="stat-label">Min</div>
                             <div class="stat-value" style="font-size: 0.95rem; color: var(--warning);">${lsl.toFixed(1)}</div>
                         </div>
                         <div class="stat-small">
-                            <div class="stat-label">USL</div>
+                            <div class="stat-label">Max</div>
                             <div class="stat-value" style="font-size: 0.95rem; color: var(--warning);">${usl.toFixed(1)}</div>
                         </div>
                     </div>
@@ -1009,7 +1027,7 @@
                             tension: 0, pointRadius: 0
                         },
                         {
-                            label: 'LSL',
+                            label: 'Min',
                             data: lslData,
                             borderColor: '#E07B39',
                             borderWidth: 1.5,
@@ -1017,7 +1035,7 @@
                             tension: 0, pointRadius: 0
                         },
                         {
-                            label: 'USL',
+                            label: 'Max',
                             data: uslData,
                             borderColor: '#E07B39',
                             borderWidth: 1.5,
@@ -1741,9 +1759,9 @@
                 confirmMsg += `\n\n⚠️ CẢNH BÁO KẾ HOẠCH: ${planWarns.length} mã sẽ VƯỢT NGOÀI kế hoạch sau giao dịch:`;
                 planWarns.forEach(w => {
                     if (w.status === 'high') {
-                        confirmMsg += `\n  • ${w.material}: Tồn dự kiến ${w.after.toFixed(3)} tấn > USL ${w.usl.toFixed(2)} tấn (vượt +${w.delta.toFixed(3)})`;
+                        confirmMsg += `\n  • ${w.material}: Tồn dự kiến ${w.after.toFixed(3)} tấn > Max ${w.usl.toFixed(2)} tấn (vượt +${w.delta.toFixed(3)})`;
                     } else {
-                        confirmMsg += `\n  • ${w.material}: Tồn dự kiến ${w.after.toFixed(3)} tấn < LSL ${w.lsl.toFixed(2)} tấn (thiếu -${w.delta.toFixed(3)})`;
+                        confirmMsg += `\n  • ${w.material}: Tồn dự kiến ${w.after.toFixed(3)} tấn < Min ${w.lsl.toFixed(2)} tấn (thiếu -${w.delta.toFixed(3)})`;
                     }
                 });
             }
@@ -1773,7 +1791,7 @@
                 
                 setSyncStatus('ok', '✓ Đã ghi ' + result.processedCount + ' giao dịch');
                 
-                // Fetch dữ liệu mới để tính lại cảnh báo LSL/USL thực tế
+                // Fetch dữ liệu mới để tính lại cảnh báo Min/Max thực tế
                 await loadDataFromSheets();
                 
                 // Tính cảnh báo sau khi ghi thực tế (dựa trên tồn mới nhất, tính riêng cho các mã trong giao dịch vừa rồi)
@@ -1801,9 +1819,9 @@
                     msg += `\n\n⚠️ CẢNH BÁO: ${postWarnings.length} mã đang lệch kế hoạch:`;
                     postWarnings.forEach(w => {
                         if (w.status === 'high') {
-                            msg += `\n  • ${w.material}: Tồn ${w.current.toFixed(3)} tấn > USL ${w.usl.toFixed(2)} tấn (vượt +${w.delta.toFixed(3)})`;
+                            msg += `\n  • ${w.material}: Tồn ${w.current.toFixed(3)} tấn > Max ${w.usl.toFixed(2)} tấn (vượt +${w.delta.toFixed(3)})`;
                         } else {
-                            msg += `\n  • ${w.material}: Tồn ${w.current.toFixed(3)} tấn < LSL ${w.lsl.toFixed(2)} tấn (thiếu -${w.delta.toFixed(3)})`;
+                            msg += `\n  • ${w.material}: Tồn ${w.current.toFixed(3)} tấn < Min ${w.lsl.toFixed(2)} tấn (thiếu -${w.delta.toFixed(3)})`;
                         }
                     });
                     msg += '\n\nKiểm tra tab "Tổng Quan" để xem chi tiết.';
