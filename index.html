@@ -267,8 +267,8 @@
 
     <div class="header">
         <div>
-            <div class="header-title">Quản Lý Tồn Kho Nguyên Vật Liệu</div>
-            <div class="header-brand">CÔNG TY CỔ PHẦN CÔNG NGHIỆP TOYOTAKI</div>
+            <div class="header-title">Quản Lý Tồn Kho NVL</div>
+            <div class="header-brand">TOYOTAKI — DIE CASTING</div>
         </div>
         <div><span class="sync-status" id="syncStatus">⏳ Đang kết nối...</span></div>
     </div>
@@ -351,11 +351,12 @@
                                     <th>Ngày Nhập</th>
                                     <th>Số Lượng</th>
                                     <th>ĐV</th>
-                                    <th style="width: 60px;">Xóa</th>
+                                    <th style="width: 90px;">Trạng Thái</th>
+                                    <th style="width: 50px;">Xóa</th>
                                 </tr>
                             </thead>
                             <tbody id="cartTableBody">
-                                <tr><td colspan="7" style="text-align: center; color: var(--gray); padding: 1.5rem;">Chưa có pallet nào trong giỏ. Hãy quét QR.</td></tr>
+                                <tr><td colspan="8" style="text-align: center; color: var(--gray); padding: 1.5rem;">Chưa có pallet nào trong giỏ. Hãy quét QR.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -911,143 +912,229 @@
         }
 
         // ===== TAB QUÉT QR - GIỎ HÀNG NHIỀU PALLET =====
-        // Mỗi item: { tagNo, material, tenNVL, ngayNhap, soLuong, donVi, ghiChu }
+        // Mỗi item: { tagNo, material, tenNVL, ngayNhap, soLuong, donVi, ghiChu,
+        //             validationStatus: 'pending'|'ok'|'error'|'fifo-warn',
+        //             errorMsg?: string, fifoWarnings?: [{tagNo, ngayNhap, soLuong, donVi}] }
         let scanCart = [];
+        let pendingValidations = 0; // Số pallet đang validate background
 
         function focusQRInput() {
             document.getElementById('qrScanInput').focus();
         }
 
         function onCartTypeChange() {
-            // Đổi loại giao dịch → check lại tất cả pallet trong giỏ có phù hợp không
-            // (đơn giản: chỉ update label, khi ghi nhận thì Apps Script validate)
+            // Đổi loại giao dịch → cần re-validate tất cả pallet trong giỏ
+            scanCart.forEach(item => {
+                item.validationStatus = 'pending';
+                item.errorMsg = undefined;
+                item.fifoWarnings = undefined;
+            });
             renderCart();
+            // Re-validate lại tất cả
+            scanCart.forEach((item, idx) => {
+                validatePalletAsync(idx);
+            });
         }
 
-        // Xử lý keydown trên ô quét QR
-        // - Enter: thêm vào giỏ
-        // - QR scanner cũng gửi Enter cuối cùng
+        // Parse QR content: "TagNo>Mã>Tên>Ngày>SL>ĐV" hoặc chỉ Tag No
+        function parseQRContent(rawText) {
+            const parts = rawText.split('>').map(p => p.trim());
+            if (parts.length >= 6) {
+                // Format đầy đủ
+                return {
+                    tagNo: parts[0],
+                    material: parts[1],
+                    tenNVL: parts[2],
+                    ngayNhap: parts[3],
+                    soLuong: parseFloat(parts[4]) || 0,
+                    donVi: parts[5],
+                    fromQR: true
+                };
+            }
+            // Chỉ có Tag No → cần fetch server
+            return {
+                tagNo: parts[0],
+                fromQR: false
+            };
+        }
+
         function onQRScanKey(event) {
             if (event.key !== 'Enter') return;
             event.preventDefault();
             const input = document.getElementById('qrScanInput');
             const rawText = input.value.trim();
             if (!rawText) return;
-
-            // Parse QR: có thể là "Tag>Mã>Tên>Ngày>SL>ĐV" hoặc chỉ có Tag No
-            let tagNo = '';
-            if (rawText.includes('>')) {
-                tagNo = rawText.split('>')[0].trim();
-            } else {
-                tagNo = rawText;
-            }
-
             input.value = '';
-            addPalletToCart(tagNo);
+            addPalletToCart(rawText);
         }
 
-        // Thêm 1 pallet vào giỏ (fetch từ Apps Script + FIFO check nếu xuất)
-        async function addPalletToCart(tagNo) {
-            if (!tagNo) return;
-            
-            // Check trùng trong giỏ
-            if (scanCart.find(x => x.tagNo === tagNo)) {
-                alert('⚠️ Pallet ' + tagNo + ' đã có trong giỏ');
+        // Thêm vào giỏ NGAY (không đợi fetch)
+        function addPalletToCart(rawText) {
+            const parsed = parseQRContent(rawText);
+            if (!parsed.tagNo) return;
+
+            // Check trùng
+            if (scanCart.find(x => x.tagNo === parsed.tagNo)) {
+                // Beep khác để báo trùng, nhưng không alert (không chặn workflow)
+                playBeep(400, 200);
+                showToast('⚠️ ' + parsed.tagNo + ' đã có trong giỏ');
                 focusQRInput();
                 return;
             }
-            
-            const txType = document.getElementById('cartTxType').value;
-            showLoading(true);
-            
-            try {
-                // Fetch thông tin tem
-                const response = await fetch(GAS_URL + '?action=getTemByTagNo&tagNo=' + encodeURIComponent(tagNo));
-                const result = await response.json();
-                
-                if (result.status !== 'ok') {
-                    throw new Error(result.message || 'Không tìm thấy tem');
-                }
-                
-                const tem = result.tem;
-                
-                // Validate status theo loại giao dịch
-                if (txType === 'OUT' && tem.currentStatus !== 'Đã nhập kho') {
-                    showLoading(false);
-                    alert('❌ Không thể xuất pallet ' + tagNo + '\nTrạng thái hiện tại: ' + (tem.currentStatus || '(chưa nhập)') + '\nChỉ pallet đang "Đã nhập kho" mới xuất được.');
-                    focusQRInput();
-                    return;
-                }
-                if (txType === 'IN' && tem.currentStatus === 'Đã nhập kho') {
-                    showLoading(false);
-                    alert('❌ Pallet ' + tagNo + ' đã ở trạng thái "Đã nhập kho" rồi');
-                    focusQRInput();
-                    return;
-                }
-                
-                // Nếu XUẤT: check FIFO
-                if (txType === 'OUT') {
-                    const fifoResp = await fetch(GAS_URL + '?action=checkFIFO&tagNo=' + encodeURIComponent(tagNo));
-                    const fifo = await fifoResp.json();
-                    
-                    if (fifo.status === 'ok' && fifo.olderCount > 0) {
-                        showLoading(false);
-                        const oldList = fifo.olderPallets.slice(0, 10).map(p => 
-                            `  • ${p.tagNo} (nhập ${p.ngayNhap}, SL ${p.soLuong} ${p.donVi})`
-                        ).join('\n');
-                        const moreMsg = fifo.olderCount > 10 ? `\n  ...và ${fifo.olderCount - 10} pallet khác` : '';
-                        
-                        const confirmMsg = `⚠️ CẢNH BÁO FIFO\n\n` +
-                            `Mã ${tem.material}: có ${fifo.olderCount} pallet CŨ HƠN đang trong kho:\n\n` +
-                            oldList + moreMsg + '\n\n' +
-                            `Ngày nhập của pallet ${tagNo} là ${tem.ngayNhap}.\n\n` +
-                            `Bạn nên dùng pallet cũ hơn trước.\n\n` +
-                            `Vẫn thêm pallet này vào giỏ để xuất?`;
-                        
-                        if (!confirm(confirmMsg)) {
-                            focusQRInput();
-                            return;
-                        }
-                        showLoading(true);
-                    }
-                }
-                
-                // Thêm vào giỏ
+
+            if (parsed.fromQR) {
+                // Có đủ thông tin từ QR → thêm vào giỏ ngay
                 scanCart.push({
-                    tagNo: tem.tagNo,
-                    material: tem.material,
-                    tenNVL: tem.tenNVL,
-                    ngayNhap: tem.ngayNhap,
-                    soLuong: tem.soLuong,
-                    donVi: tem.donVi,
-                    ghiChu: tem.ghiChu
+                    tagNo: parsed.tagNo,
+                    material: parsed.material,
+                    tenNVL: parsed.tenNVL,
+                    ngayNhap: parsed.ngayNhap,
+                    soLuong: parsed.soLuong,
+                    donVi: parsed.donVi,
+                    ghiChu: '',
+                    validationStatus: 'pending'
                 });
-                
-                showLoading(false);
+                playBeep(1000, 80);
                 renderCart();
                 focusQRInput();
-                // Beep nhẹ để feedback (dùng WebAudio)
-                playBeep();
-                
-            } catch (error) {
-                showLoading(false);
-                alert('Lỗi khi thêm pallet: ' + error.message);
+                // Validate background
+                validatePalletAsync(scanCart.length - 1);
+            } else {
+                // Chỉ có Tag No → cần fetch để có thông tin
+                scanCart.push({
+                    tagNo: parsed.tagNo,
+                    material: '?',
+                    tenNVL: '(đang tải...)',
+                    ngayNhap: '?',
+                    soLuong: 0,
+                    donVi: '?',
+                    ghiChu: '',
+                    validationStatus: 'pending'
+                });
+                playBeep(1000, 80);
+                renderCart();
                 focusQRInput();
+                // Fetch info + validate
+                fetchAndValidatePalletAsync(scanCart.length - 1);
             }
         }
 
-        // Beep nhẹ khi quét thành công
-        function playBeep() {
+        // Validate background 1 pallet: check status + FIFO
+        // Không block UI, cập nhật row khi xong
+        async function validatePalletAsync(cartIdx) {
+            const item = scanCart[cartIdx];
+            if (!item) return;
+            
+            const txType = document.getElementById('cartTxType').value;
+            pendingValidations++;
+            updateSubmitButtonState();
+            
+            try {
+                // Fetch tem info + FIFO song song (2 request cùng lúc)
+                const promises = [
+                    fetch(GAS_URL + '?action=getTemByTagNo&tagNo=' + encodeURIComponent(item.tagNo)).then(r => r.json())
+                ];
+                if (txType === 'OUT') {
+                    promises.push(
+                        fetch(GAS_URL + '?action=checkFIFO&tagNo=' + encodeURIComponent(item.tagNo)).then(r => r.json())
+                    );
+                }
+                
+                const results = await Promise.all(promises);
+                const temResult = results[0];
+                const fifoResult = results[1]; // undefined nếu IN
+                
+                // Vẫn đúng vị trí trong giỏ? (user có thể đã xóa)
+                if (!scanCart[cartIdx] || scanCart[cartIdx].tagNo !== item.tagNo) {
+                    return; // Item đã bị xóa hoặc thay đổi, bỏ qua kết quả
+                }
+                
+                if (temResult.status !== 'ok') {
+                    scanCart[cartIdx].validationStatus = 'error';
+                    scanCart[cartIdx].errorMsg = temResult.message || 'Không tìm thấy tem';
+                    renderCart();
+                    return;
+                }
+                
+                // Update thông tin từ server (chính xác hơn QR content)
+                const serverTem = temResult.tem;
+                scanCart[cartIdx].material = serverTem.material;
+                scanCart[cartIdx].tenNVL = serverTem.tenNVL;
+                scanCart[cartIdx].ngayNhap = serverTem.ngayNhap;
+                scanCart[cartIdx].soLuong = serverTem.soLuong;
+                scanCart[cartIdx].donVi = serverTem.donVi;
+                
+                // Check status theo txType
+                if (txType === 'OUT' && serverTem.currentStatus !== 'Đã nhập kho') {
+                    scanCart[cartIdx].validationStatus = 'error';
+                    scanCart[cartIdx].errorMsg = 'Trạng thái: ' + (serverTem.currentStatus || '(chưa nhập)') + '. Chỉ pallet "Đã nhập kho" mới xuất được.';
+                    renderCart();
+                    return;
+                }
+                if (txType === 'IN' && serverTem.currentStatus === 'Đã nhập kho') {
+                    scanCart[cartIdx].validationStatus = 'error';
+                    scanCart[cartIdx].errorMsg = 'Pallet đã ở trạng thái "Đã nhập kho" rồi';
+                    renderCart();
+                    return;
+                }
+                
+                // FIFO check nếu XUẤT
+                if (txType === 'OUT' && fifoResult && fifoResult.status === 'ok' && fifoResult.olderCount > 0) {
+                    scanCart[cartIdx].validationStatus = 'fifo-warn';
+                    scanCart[cartIdx].fifoWarnings = fifoResult.olderPallets;
+                    scanCart[cartIdx].fifoCount = fifoResult.olderCount;
+                    renderCart();
+                    return;
+                }
+                
+                scanCart[cartIdx].validationStatus = 'ok';
+                renderCart();
+                
+            } catch (error) {
+                if (scanCart[cartIdx] && scanCart[cartIdx].tagNo === item.tagNo) {
+                    scanCart[cartIdx].validationStatus = 'error';
+                    scanCart[cartIdx].errorMsg = 'Lỗi kết nối: ' + error.message;
+                    renderCart();
+                }
+            } finally {
+                pendingValidations--;
+                updateSubmitButtonState();
+            }
+        }
+
+        // Trường hợp QR không có đủ thông tin: fetch info trước rồi validate
+        async function fetchAndValidatePalletAsync(cartIdx) {
+            // validatePalletAsync đã fetch info từ server rồi, dùng lại luôn
+            return validatePalletAsync(cartIdx);
+        }
+
+        // Toast nhẹ (không chặn workflow)
+        function showToast(msg) {
+            let toast = document.getElementById('scanToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'scanToast';
+                toast.style.cssText = 'position: fixed; top: 80px; right: 20px; background: #333; color: white; padding: 10px 16px; border-radius: 4px; font-size: 0.85rem; z-index: 9998; opacity: 0; transition: opacity 0.2s; max-width: 300px;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+        }
+
+        // Beep với frequency & duration tùy chỉnh
+        function playBeep(freq, dur) {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.connect(gain);
                 gain.connect(ctx.destination);
-                osc.frequency.value = 1000;
+                osc.frequency.value = freq || 1000;
                 gain.gain.value = 0.1;
                 osc.start();
-                setTimeout(() => { osc.stop(); ctx.close(); }, 100);
+                setTimeout(() => { osc.stop(); ctx.close(); }, dur || 100);
             } catch (e) { /* ignore */ }
         }
 
@@ -1064,59 +1151,149 @@
             }
         }
 
+        // Xem chi tiết cảnh báo FIFO của 1 pallet
+        function showFifoWarnings(idx) {
+            const item = scanCart[idx];
+            if (!item || !item.fifoWarnings) return;
+            const list = item.fifoWarnings.slice(0, 10).map(p => 
+                `  • ${p.tagNo} (nhập ${p.ngayNhap}, SL ${p.soLuong} ${p.donVi})`
+            ).join('\n');
+            const more = item.fifoCount > 10 ? `\n  ...và ${item.fifoCount - 10} pallet khác` : '';
+            alert(
+                `⚠️ FIFO: Mã ${item.material} có ${item.fifoCount} pallet CŨ HƠN đang trong kho:\n\n` +
+                list + more + '\n\n' +
+                `Ngày nhập của pallet ${item.tagNo} là ${item.ngayNhap}.\n` +
+                `Bạn nên dùng pallet cũ hơn trước.`
+            );
+        }
+
+        function updateSubmitButtonState() {
+            const btn = document.getElementById('btnSubmitCart');
+            if (!btn) return;
+            const hasError = scanCart.some(x => x.validationStatus === 'error');
+            const hasPending = pendingValidations > 0 || scanCart.some(x => x.validationStatus === 'pending');
+            
+            if (scanCart.length === 0) {
+                btn.disabled = true;
+                btn.textContent = '✓ Ghi Nhận Tất Cả';
+                btn.style.opacity = '0.5';
+            } else if (hasPending) {
+                btn.disabled = true;
+                btn.textContent = `⏳ Đang kiểm tra (${pendingValidations}/${scanCart.length})...`;
+                btn.style.opacity = '0.7';
+            } else if (hasError) {
+                btn.disabled = true;
+                btn.textContent = '❌ Có pallet lỗi - xóa để tiếp tục';
+                btn.style.opacity = '0.5';
+            } else {
+                btn.disabled = false;
+                const warns = scanCart.filter(x => x.validationStatus === 'fifo-warn').length;
+                btn.textContent = warns > 0 
+                    ? `✓ Ghi Nhận Tất Cả (${warns} cảnh báo FIFO)` 
+                    : '✓ Ghi Nhận Tất Cả';
+                btn.style.opacity = '1';
+            }
+        }
+
         function renderCart() {
             const tbody = document.getElementById('cartTableBody');
             const countEl = document.getElementById('cartCount');
             const totalKgEl = document.getElementById('cartTotalKg');
             const totalPcsEl = document.getElementById('cartTotalPcs');
-            const txType = document.getElementById('cartTxType').value;
             
             countEl.textContent = scanCart.length;
             
             if (scanCart.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--gray); padding: 1.5rem;">Chưa có pallet nào trong giỏ. Hãy quét QR.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--gray); padding: 1.5rem;">Chưa có pallet nào trong giỏ. Hãy quét QR.</td></tr>';
                 totalKgEl.textContent = '0';
                 totalPcsEl.textContent = '0';
                 updateCartPreviewTable();
+                updateSubmitButtonState();
                 return;
             }
             
             let html = '';
             let totalKg = 0, totalPcs = 0;
             scanCart.forEach((item, idx) => {
-                html += `<tr>
+                let statusIcon, statusColor, rowStyle;
+                switch (item.validationStatus) {
+                    case 'ok':
+                        statusIcon = '✅';
+                        statusColor = 'var(--success)';
+                        rowStyle = '';
+                        break;
+                    case 'error':
+                        statusIcon = '❌';
+                        statusColor = 'var(--danger)';
+                        rowStyle = 'background: #ffebee;';
+                        break;
+                    case 'fifo-warn':
+                        statusIcon = '⚠️';
+                        statusColor = '#F57F17';
+                        rowStyle = 'background: #fff8e1;';
+                        break;
+                    default:
+                        statusIcon = '⏳';
+                        statusColor = 'var(--gray)';
+                        rowStyle = 'background: #f5f5f5; opacity: 0.85;';
+                }
+                
+                const soLuongStr = item.soLuong 
+                    ? Number(item.soLuong).toLocaleString('vi-VN', { maximumFractionDigits: 3 })
+                    : '?';
+                
+                const statusCell = item.validationStatus === 'fifo-warn'
+                    ? `<span style="cursor: pointer; color: ${statusColor}; font-weight: 700;" title="Nhấn xem chi tiết" onclick="showFifoWarnings(${idx})">${statusIcon} FIFO (${item.fifoCount})</span>`
+                    : item.validationStatus === 'error'
+                    ? `<span style="color: ${statusColor}; font-weight: 700;" title="${item.errorMsg || ''}">${statusIcon} Lỗi</span>`
+                    : item.validationStatus === 'ok'
+                    ? `<span style="color: ${statusColor};">${statusIcon}</span>`
+                    : `<span style="color: ${statusColor};">${statusIcon}</span>`;
+                
+                html += `<tr style="${rowStyle}">
                     <td>${idx + 1}</td>
                     <td style="font-family: monospace; font-weight: 700;">${item.tagNo}</td>
                     <td><strong>${item.material}</strong></td>
                     <td>${item.ngayNhap}</td>
-                    <td>${Number(item.soLuong).toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</td>
+                    <td>${soLuongStr}</td>
                     <td>${item.donVi}</td>
+                    <td style="text-align: center;">${statusCell}</td>
                     <td><button class="btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="removeFromCart(${idx})">✕</button></td>
                 </tr>`;
-                if (item.donVi === 'kg') totalKg += item.soLuong;
-                else totalPcs += item.soLuong;
+                
+                // Chỉ tính tổng cho pallet hợp lệ (ok hoặc fifo-warn)
+                if (item.validationStatus === 'ok' || item.validationStatus === 'fifo-warn') {
+                    if (item.donVi === 'kg') totalKg += item.soLuong;
+                    else if (item.donVi === 'pcs') totalPcs += item.soLuong;
+                }
+                
+                // Thêm dòng error message nếu có
+                if (item.validationStatus === 'error' && item.errorMsg) {
+                    html += `<tr style="background: #ffebee;"><td></td><td colspan="7" style="font-size: 0.8rem; color: var(--danger); padding-left: 1rem;">↳ ${item.errorMsg}</td></tr>`;
+                }
             });
             tbody.innerHTML = html;
             totalKgEl.textContent = totalKg.toLocaleString('vi-VN', { maximumFractionDigits: 3 });
             totalPcsEl.textContent = totalPcs.toLocaleString('vi-VN');
             
             updateCartPreviewTable();
+            updateSubmitButtonState();
         }
 
-        // Bảng preview tồn dự kiến sau giao dịch
+        // Bảng preview tồn dự kiến sau giao dịch (chỉ tính pallet ok/fifo-warn)
         function updateCartPreviewTable() {
             const tbody = document.getElementById('cartPreviewTable');
             const txType = document.getElementById('cartTxType').value;
             
-            // Gom theo mã
             const byMat = {};
             scanCart.forEach(item => {
+                if (item.validationStatus !== 'ok' && item.validationStatus !== 'fifo-warn') return;
                 const qtyInTons = item.donVi === 'kg' ? item.soLuong / 1000 : item.soLuong;
                 byMat[item.material] = (byMat[item.material] || 0) + qtyInTons;
             });
             
             if (Object.keys(byMat).length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--gray);">Chưa có pallet nào</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--gray);">Chưa có pallet nào (hoặc chưa xác thực xong)</td></tr>';
                 return;
             }
             
@@ -1139,23 +1316,36 @@
 
         // Gửi giỏ hàng lên Apps Script
         async function submitCartTransaction() {
-            if (scanCart.length === 0) {
-                alert('Giỏ trống. Hãy quét pallet trước.');
+            // Chỉ lấy pallet đã ok hoặc fifo-warn
+            const validItems = scanCart.filter(x => x.validationStatus === 'ok' || x.validationStatus === 'fifo-warn');
+            const errorItems = scanCart.filter(x => x.validationStatus === 'error');
+            const pendingItems = scanCart.filter(x => x.validationStatus === 'pending');
+            
+            if (validItems.length === 0) {
+                alert('Không có pallet hợp lệ để ghi nhận');
+                return;
+            }
+            if (pendingItems.length > 0) {
+                alert('Còn ' + pendingItems.length + ' pallet đang kiểm tra, hãy đợi hoặc xóa');
                 return;
             }
             
             const txType = document.getElementById('cartTxType').value;
             const typeText = txType === 'IN' ? 'NHẬP' : 'XUẤT';
+            const fifoWarns = validItems.filter(x => x.validationStatus === 'fifo-warn').length;
             
-            if (!confirm(`Sẽ ${typeText} kho ${scanCart.length} pallet.\n\nMỗi pallet ghi 1 giao dịch riêng, cập nhật trạng thái tem và tồn hiện tại.\n\nTiếp tục?`)) {
-                return;
-            }
+            let confirmMsg = `Sẽ ${typeText} kho ${validItems.length} pallet.`;
+            if (fifoWarns > 0) confirmMsg += `\n\n⚠️ Có ${fifoWarns} pallet có cảnh báo FIFO (vẫn tiếp tục xuất pallet mới, không dùng pallet cũ).`;
+            if (errorItems.length > 0) confirmMsg += `\n\n(${errorItems.length} pallet lỗi sẽ bị bỏ qua)`;
+            confirmMsg += '\n\nTiếp tục?';
+            
+            if (!confirm(confirmMsg)) return;
             
             showLoading(true);
             setSyncStatus('loading', '⏳ Đang xử lý...');
             
             try {
-                const items = scanCart.map(x => ({ tagNo: x.tagNo }));
+                const items = validItems.map(x => ({ tagNo: x.tagNo }));
                 const params = new URLSearchParams({
                     action: 'processMultiTransaction',
                     type: txType,
@@ -1177,7 +1367,7 @@
                 }
                 alert(msg);
                 
-                // Clear giỏ và reload dữ liệu
+                // Clear giỏ và reload
                 scanCart = [];
                 renderCart();
                 await loadDataFromSheets();
