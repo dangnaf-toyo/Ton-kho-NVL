@@ -310,65 +310,80 @@
             </div>
         </div>
 
-        <!-- Tab 3: Nhập/Xuất -->
+        <!-- Tab 3: Quét QR Xuất/Nhập (multi-pallet) -->
         <div id="qr-input" class="tab-content">
             <div class="section">
-                <div class="section-title">📱 Vùng Quét QR Code</div>
-                <div class="alert alert-info">💡 Format QR: Tag No &gt; Mã NVL &gt; Tên NVL &gt; Ngày &gt; Khối Lượng</div>
+                <div class="section-title">📱 Quét QR - Xuất/Nhập Kho Nhiều Pallet</div>
+                <div class="alert alert-info">
+                    💡 <b>Quy trình:</b><br>
+                    1. Chọn loại giao dịch (Nhập/Xuất) → 2. Quét QR liên tiếp các pallet → 3. Nhấn "Ghi Nhận Tất Cả"<br>
+                    <b>FIFO:</b> Khi xuất, hệ thống tự động cảnh báo nếu còn pallet cũ hơn cùng mã chưa xuất.
+                </div>
+
                 <div class="form-row">
-                    <div class="form-group" style="grid-column: 1 / -1;">
-                        <label>Quét QR Code</label>
-                        <input type="text" id="qrInput" placeholder="Quét QR code tại đây..." autofocus onchange="parseQRCode()">
+                    <div class="form-group">
+                        <label>Loại Giao Dịch</label>
+                        <select id="cartTxType" onchange="onCartTypeChange()">
+                            <option value="OUT">📤 XUẤT KHO</option>
+                            <option value="IN">📥 NHẬP KHO</option>
+                        </select>
                     </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Quét QR Code (hoặc gõ Tag No + Enter)</label>
+                        <input type="text" id="qrScanInput" placeholder="Đưa mã QR vào camera hoặc gõ Tag No..." autofocus onkeydown="onQRScanKey(event)">
+                    </div>
+                </div>
+
+                <div style="background: #f9f9f9; border-radius: 6px; padding: 1rem; margin-top: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <div style="font-weight: 600; color: var(--dark);">🛒 Giỏ Pallet Đã Quét</div>
+                        <div style="font-size: 0.85rem; color: var(--gray);">
+                            Tổng: <b id="cartCount" style="color: var(--primary);">0</b> pallet
+                        </div>
+                    </div>
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; background: white;">
+                        <table class="multi-qty-table" id="cartTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 30px;">#</th>
+                                    <th>Tag No</th>
+                                    <th>Mã NVL</th>
+                                    <th>Ngày Nhập</th>
+                                    <th>Số Lượng</th>
+                                    <th>ĐV</th>
+                                    <th style="width: 60px;">Xóa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cartTableBody">
+                                <tr><td colspan="7" style="text-align: center; color: var(--gray); padding: 1.5rem;">Chưa có pallet nào trong giỏ. Hãy quét QR.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="text-align: right; margin-top: 0.5rem; font-size: 0.85rem; color: var(--gray);">
+                        Tổng khối lượng: <b id="cartTotalKg" style="color: var(--primary);">0</b> kg / <b id="cartTotalPcs" style="color: var(--primary);">0</b> pcs
+                    </div>
+                </div>
+
+                <div class="btn-group" style="margin-top: 1rem;">
+                    <button class="btn-primary" onclick="submitCartTransaction()" id="btnSubmitCart">✓ Ghi Nhận Tất Cả</button>
+                    <button class="btn-secondary" onclick="clearCart()">🗑️ Xóa Giỏ</button>
+                    <button class="btn-secondary" onclick="focusQRInput()">🔍 Focus Ô Quét</button>
                 </div>
             </div>
 
-            <div class="section">
-                <div class="section-title">Ghi Nhận Giao Dịch</div>
-                <div class="form-row">
-                    <div class="form-group"><label>Ngày</label><input type="date" id="txDate"></div>
-                    <div class="form-group">
-                        <label>Loại</label>
-                        <select id="txType" onchange="updateScoreCard()">
-                            <option value="IN">📥 Nhập</option>
-                            <option value="OUT">📤 Xuất</option>
-                        </select>
-                    </div>
-                    <div class="form-group"><label>Mã NVL</label><select id="txMaterial" onchange="updateScoreCard()"></select></div>
-                    <div class="form-group">
-                        <label>Khối Lượng (Tấn)</label>
-                        <input type="number" id="txQuantity" step="0.001" min="0" placeholder="0.000" oninput="updateScoreCard()">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group" style="grid-column: 1 / -1;">
-                        <label>Ghi Chú</label>
-                        <textarea id="txComment" rows="2"></textarea>
-                    </div>
-                </div>
-
-                <div class="score-card">
-                    <div class="score-item">
-                        <div class="score-item-label">Tồn Hiện Tại</div>
-                        <div class="score-item-value" id="scoreCurrentStock">0.00</div>
-                        <div class="score-item-unit">Tấn</div>
-                    </div>
-                    <div class="score-item">
-                        <div class="score-item-label">Sau Giao Dịch</div>
-                        <div class="score-item-value" id="scoreAfterTx">0.00</div>
-                        <div class="score-item-unit">Tấn</div>
-                    </div>
-                    <div class="score-item">
-                        <div class="score-item-label">Khoảng LSL - USL</div>
-                        <div class="score-item-value" id="scorePlanStock" style="font-size: 1.3rem;">0.00 - 0.00</div>
-                        <div class="score-item-unit">Tấn</div>
-                    </div>
-                </div>
-
-                <div class="btn-group">
-                    <button class="btn-primary" onclick="submitTransaction()">✓ Ghi Nhận & Lưu Sheet</button>
-                    <button class="btn-secondary" onclick="resetTransactionForm()">⟲ Đặt Lại</button>
-                </div>
+            <div class="card">
+                <div class="card-title">📊 Tồn Hiện Tại Sau Giao Dịch (dự kiến)</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Mã NVL</th>
+                            <th>Tồn Hiện Tại (Tấn)</th>
+                            <th>Δ Sau Giao Dịch (Tấn)</th>
+                            <th>Tồn Dự Kiến (Tấn)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartPreviewTable"></tbody>
+                </table>
             </div>
         </div>
 
@@ -572,16 +587,10 @@
     <script>
         // ===== CONFIG =====
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxXYRfz_wuz3RE0a8TCr4zWyzF23G5rc3SWo4ijKLcv7UkLBfdw2um1HbNwRZgAnCc/exec";
+        // MATERIALS: danh sách 7 mã cứng dùng cho các sheet có dòng cố định
+        //   (Tổng Quan, Kế Hoạch, Cài Đặt, Tồn Đầu Kỳ, Tồn Hiện Tại)
+        // Với tem NVL: dùng masterMaterialsList (fetch từ Master file KHSX)
         const MATERIALS = ['ADC12-DAK', 'ADC12-CHT', 'ADC12-TAQ', 'ADC6-CHT', 'HD2-HDT', 'EZDA3-HDT', 'EZDA3-MET'];
-        const MATERIAL_NAMES = {
-            'ADC12-DAK': 'Nhôm ADC12 của Daikin',
-            'ADC12-CHT': 'Nhôm ADC12 của Chiến Thắng',
-            'ADC12-TAQ': 'Nhôm ADC12 của TAQ',
-            'ADC6-CHT': 'Nhôm ADC6 của Chiến Thắng',
-            'HD2-HDT': 'Kẽm HD2 của HDT',
-            'EZDA3-HDT': 'Kẽm EZDA3 của Honda Trading',
-            'EZDA3-MET': 'Kẽm EZDA3 của MET'
-        };
 
         let currentMaterial = 'ADC12-CHT';
         let allData = { opening: {}, planDaily: {}, transactions: [], settings: {}, currentStock: {} };
@@ -590,17 +599,11 @@
 
         // ===== INIT =====
         async function init() {
-            document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('temDate').value = new Date().toISOString().split('T')[0];
-            const txSelect = document.getElementById('txMaterial');
-            MATERIALS.forEach(code => {
-                const opt1 = document.createElement('option');
-                opt1.value = code; opt1.textContent = code;
-                txSelect.appendChild(opt1);
-            });
             await loadDataFromSheets();
             // Load master data cho tab In Tem (async, không chờ)
             loadMasterMaterialsForTem();
+            renderCart(); // Init giỏ trống
         }
 
         // ===== SYNC STATUS =====
@@ -634,7 +637,7 @@
                 renderSettingsTable();
                 renderPlanNhapTable();
                 renderTransactionHistory();
-                updateScoreCard();
+                renderCart(); // Cập nhật preview tồn dự kiến khi có data mới
                 if (planChart) updatePlanChart();
 
                 setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
@@ -907,108 +910,285 @@
             });
         }
 
-        // ===== TAB QR =====
-        function parseQRCode() {
-            const qrText = document.getElementById('qrInput').value.trim();
-            if (!qrText) return;
-            const parts = qrText.split('>');
-            if (parts.length >= 5) {
-                document.getElementById('txDate').value = parts[3].trim() || new Date().toISOString().split('T')[0];
-                document.getElementById('txMaterial').value = parts[1].trim();
-                document.getElementById('txQuantity').value = parseFloat(parts[4].trim()) || 0;
-                document.getElementById('txComment').value = `[QR] Tag: ${parts[0].trim()}, ${parts[2].trim()}`;
-                document.getElementById('qrInput').value = '';
-                updateScoreCard();
-            }
+        // ===== TAB QUÉT QR - GIỎ HÀNG NHIỀU PALLET =====
+        // Mỗi item: { tagNo, material, tenNVL, ngayNhap, soLuong, donVi, ghiChu }
+        let scanCart = [];
+
+        function focusQRInput() {
+            document.getElementById('qrScanInput').focus();
         }
 
-        function updateScoreCard() {
-            const material = document.getElementById('txMaterial').value;
-            const txType = document.getElementById('txType').value;
-            const quantity = parseFloat(document.getElementById('txQuantity').value) || 0;
-            const currentStock = getCurrentActualStock(material);
-            const planToday = getPlanTodayForMaterial(material);
-            const bw = allData.settings[material] || 5;
-            const lsl = planToday - bw;
-            const usl = planToday + bw;
-
-            let afterStock = currentStock;
-            if (txType === 'IN') afterStock = currentStock + quantity;
-            else afterStock = Math.max(0, currentStock - quantity);
-
-            document.getElementById('scoreCurrentStock').textContent = currentStock.toFixed(3);
-            document.getElementById('scoreAfterTx').textContent = afterStock.toFixed(3);
-            document.getElementById('scorePlanStock').textContent = lsl.toFixed(2) + ' - ' + usl.toFixed(2);
-
-            // Đổi màu ô "Sau Giao Dịch" theo trạng thái
-            const afterEl = document.getElementById('scoreAfterTx').closest('.score-item');
-            afterEl.classList.remove('normal', 'abnormal');
-            if (quantity > 0) {
-                if (afterStock >= lsl && afterStock <= usl) {
-                    afterEl.classList.add('normal');
-                } else {
-                    afterEl.classList.add('abnormal');
-                }
-            }
+        function onCartTypeChange() {
+            // Đổi loại giao dịch → check lại tất cả pallet trong giỏ có phù hợp không
+            // (đơn giản: chỉ update label, khi ghi nhận thì Apps Script validate)
+            renderCart();
         }
 
-        async function submitTransaction() {
-            const date = document.getElementById('txDate').value;
-            const type = document.getElementById('txType').value;
-            const material = document.getElementById('txMaterial').value;
-            const quantity = parseFloat(document.getElementById('txQuantity').value);
-            const comment = document.getElementById('txComment').value;
+        // Xử lý keydown trên ô quét QR
+        // - Enter: thêm vào giỏ
+        // - QR scanner cũng gửi Enter cuối cùng
+        function onQRScanKey(event) {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            const input = document.getElementById('qrScanInput');
+            const rawText = input.value.trim();
+            if (!rawText) return;
 
-            if (!date || isNaN(quantity) || quantity <= 0) {
-                alert('Vui lòng điền đầy đủ thông tin'); return;
+            // Parse QR: có thể là "Tag>Mã>Tên>Ngày>SL>ĐV" hoặc chỉ có Tag No
+            let tagNo = '';
+            if (rawText.includes('>')) {
+                tagNo = rawText.split('>')[0].trim();
+            } else {
+                tagNo = rawText;
             }
 
-            const currentStock = getCurrentActualStock(material);
-            let afterStock = currentStock;
-            if (type === 'IN') afterStock = currentStock + quantity;
-            else afterStock = Math.max(0, currentStock - quantity);
+            input.value = '';
+            addPalletToCart(tagNo);
+        }
 
+        // Thêm 1 pallet vào giỏ (fetch từ Apps Script + FIFO check nếu xuất)
+        async function addPalletToCart(tagNo) {
+            if (!tagNo) return;
+            
+            // Check trùng trong giỏ
+            if (scanCart.find(x => x.tagNo === tagNo)) {
+                alert('⚠️ Pallet ' + tagNo + ' đã có trong giỏ');
+                focusQRInput();
+                return;
+            }
+            
+            const txType = document.getElementById('cartTxType').value;
             showLoading(true);
-            setSyncStatus('loading', '⏳ Đang lưu...');
+            
             try {
-                const params = new URLSearchParams({
-                    action: 'addTransaction',
-                    date, type, material, quantity, comment,
-                    afterStock: afterStock
+                // Fetch thông tin tem
+                const response = await fetch(GAS_URL + '?action=getTemByTagNo&tagNo=' + encodeURIComponent(tagNo));
+                const result = await response.json();
+                
+                if (result.status !== 'ok') {
+                    throw new Error(result.message || 'Không tìm thấy tem');
+                }
+                
+                const tem = result.tem;
+                
+                // Validate status theo loại giao dịch
+                if (txType === 'OUT' && tem.currentStatus !== 'Đã nhập kho') {
+                    showLoading(false);
+                    alert('❌ Không thể xuất pallet ' + tagNo + '\nTrạng thái hiện tại: ' + (tem.currentStatus || '(chưa nhập)') + '\nChỉ pallet đang "Đã nhập kho" mới xuất được.');
+                    focusQRInput();
+                    return;
+                }
+                if (txType === 'IN' && tem.currentStatus === 'Đã nhập kho') {
+                    showLoading(false);
+                    alert('❌ Pallet ' + tagNo + ' đã ở trạng thái "Đã nhập kho" rồi');
+                    focusQRInput();
+                    return;
+                }
+                
+                // Nếu XUẤT: check FIFO
+                if (txType === 'OUT') {
+                    const fifoResp = await fetch(GAS_URL + '?action=checkFIFO&tagNo=' + encodeURIComponent(tagNo));
+                    const fifo = await fifoResp.json();
+                    
+                    if (fifo.status === 'ok' && fifo.olderCount > 0) {
+                        showLoading(false);
+                        const oldList = fifo.olderPallets.slice(0, 10).map(p => 
+                            `  • ${p.tagNo} (nhập ${p.ngayNhap}, SL ${p.soLuong} ${p.donVi})`
+                        ).join('\n');
+                        const moreMsg = fifo.olderCount > 10 ? `\n  ...và ${fifo.olderCount - 10} pallet khác` : '';
+                        
+                        const confirmMsg = `⚠️ CẢNH BÁO FIFO\n\n` +
+                            `Mã ${tem.material}: có ${fifo.olderCount} pallet CŨ HƠN đang trong kho:\n\n` +
+                            oldList + moreMsg + '\n\n' +
+                            `Ngày nhập của pallet ${tagNo} là ${tem.ngayNhap}.\n\n` +
+                            `Bạn nên dùng pallet cũ hơn trước.\n\n` +
+                            `Vẫn thêm pallet này vào giỏ để xuất?`;
+                        
+                        if (!confirm(confirmMsg)) {
+                            focusQRInput();
+                            return;
+                        }
+                        showLoading(true);
+                    }
+                }
+                
+                // Thêm vào giỏ
+                scanCart.push({
+                    tagNo: tem.tagNo,
+                    material: tem.material,
+                    tenNVL: tem.tenNVL,
+                    ngayNhap: tem.ngayNhap,
+                    soLuong: tem.soLuong,
+                    donVi: tem.donVi,
+                    ghiChu: tem.ghiChu
                 });
+                
+                showLoading(false);
+                renderCart();
+                focusQRInput();
+                // Beep nhẹ để feedback (dùng WebAudio)
+                playBeep();
+                
+            } catch (error) {
+                showLoading(false);
+                alert('Lỗi khi thêm pallet: ' + error.message);
+                focusQRInput();
+            }
+        }
+
+        // Beep nhẹ khi quét thành công
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 1000;
+                gain.gain.value = 0.1;
+                osc.start();
+                setTimeout(() => { osc.stop(); ctx.close(); }, 100);
+            } catch (e) { /* ignore */ }
+        }
+
+        function removeFromCart(idx) {
+            scanCart.splice(idx, 1);
+            renderCart();
+        }
+
+        function clearCart() {
+            if (scanCart.length === 0) return;
+            if (confirm('Xóa toàn bộ ' + scanCart.length + ' pallet khỏi giỏ?')) {
+                scanCart = [];
+                renderCart();
+            }
+        }
+
+        function renderCart() {
+            const tbody = document.getElementById('cartTableBody');
+            const countEl = document.getElementById('cartCount');
+            const totalKgEl = document.getElementById('cartTotalKg');
+            const totalPcsEl = document.getElementById('cartTotalPcs');
+            const txType = document.getElementById('cartTxType').value;
+            
+            countEl.textContent = scanCart.length;
+            
+            if (scanCart.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--gray); padding: 1.5rem;">Chưa có pallet nào trong giỏ. Hãy quét QR.</td></tr>';
+                totalKgEl.textContent = '0';
+                totalPcsEl.textContent = '0';
+                updateCartPreviewTable();
+                return;
+            }
+            
+            let html = '';
+            let totalKg = 0, totalPcs = 0;
+            scanCart.forEach((item, idx) => {
+                html += `<tr>
+                    <td>${idx + 1}</td>
+                    <td style="font-family: monospace; font-weight: 700;">${item.tagNo}</td>
+                    <td><strong>${item.material}</strong></td>
+                    <td>${item.ngayNhap}</td>
+                    <td>${Number(item.soLuong).toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</td>
+                    <td>${item.donVi}</td>
+                    <td><button class="btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="removeFromCart(${idx})">✕</button></td>
+                </tr>`;
+                if (item.donVi === 'kg') totalKg += item.soLuong;
+                else totalPcs += item.soLuong;
+            });
+            tbody.innerHTML = html;
+            totalKgEl.textContent = totalKg.toLocaleString('vi-VN', { maximumFractionDigits: 3 });
+            totalPcsEl.textContent = totalPcs.toLocaleString('vi-VN');
+            
+            updateCartPreviewTable();
+        }
+
+        // Bảng preview tồn dự kiến sau giao dịch
+        function updateCartPreviewTable() {
+            const tbody = document.getElementById('cartPreviewTable');
+            const txType = document.getElementById('cartTxType').value;
+            
+            // Gom theo mã
+            const byMat = {};
+            scanCart.forEach(item => {
+                const qtyInTons = item.donVi === 'kg' ? item.soLuong / 1000 : item.soLuong;
+                byMat[item.material] = (byMat[item.material] || 0) + qtyInTons;
+            });
+            
+            if (Object.keys(byMat).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--gray);">Chưa có pallet nào</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            Object.keys(byMat).sort().forEach(mat => {
+                const current = allData.currentStock[mat] || 0;
+                const delta = txType === 'IN' ? byMat[mat] : -byMat[mat];
+                const after = Math.max(0, current + delta);
+                const deltaColor = delta > 0 ? 'var(--success)' : 'var(--danger)';
+                const deltaSign = delta > 0 ? '+' : '';
+                html += `<tr>
+                    <td><strong>${mat}</strong></td>
+                    <td>${current.toFixed(3)}</td>
+                    <td style="color: ${deltaColor}; font-weight: 700;">${deltaSign}${delta.toFixed(3)}</td>
+                    <td style="color: var(--primary); font-weight: 700;">${after.toFixed(3)}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // Gửi giỏ hàng lên Apps Script
+        async function submitCartTransaction() {
+            if (scanCart.length === 0) {
+                alert('Giỏ trống. Hãy quét pallet trước.');
+                return;
+            }
+            
+            const txType = document.getElementById('cartTxType').value;
+            const typeText = txType === 'IN' ? 'NHẬP' : 'XUẤT';
+            
+            if (!confirm(`Sẽ ${typeText} kho ${scanCart.length} pallet.\n\nMỗi pallet ghi 1 giao dịch riêng, cập nhật trạng thái tem và tồn hiện tại.\n\nTiếp tục?`)) {
+                return;
+            }
+            
+            showLoading(true);
+            setSyncStatus('loading', '⏳ Đang xử lý...');
+            
+            try {
+                const items = scanCart.map(x => ({ tagNo: x.tagNo }));
+                const params = new URLSearchParams({
+                    action: 'processMultiTransaction',
+                    type: txType,
+                    items: JSON.stringify(items)
+                });
+                
                 const response = await fetch(GAS_URL + '?' + params.toString());
                 const result = await response.json();
-
-                if (result.status === 'ok') {
-                    // Update local
-                    allData.currentStock[material] = afterStock;
-                    allData.transactions.push({
-                        date, type, material, quantity, comment,
-                        afterStock, timestamp: new Date().toISOString()
-                    });
-                    renderOverview();
-                    renderTransactionHistory();
-                    updateScoreCard();
-                    resetTransactionForm();
-                    setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
-                    alert('✓ Đã ghi nhận giao dịch!');
-                } else {
-                    throw new Error(result.message || result.error);
+                
+                if (result.status !== 'ok') {
+                    throw new Error(result.message || 'Lỗi ghi nhận');
                 }
+                
+                setSyncStatus('ok', '✓ Đã ghi ' + result.processedCount + ' giao dịch');
+                
+                let msg = `✓ Ghi nhận ${result.processedCount} giao dịch ${typeText} thành công!`;
+                if (result.errors && result.errors.length > 0) {
+                    msg += '\n\n⚠️ Một số pallet có lỗi:\n' + result.errors.join('\n');
+                }
+                alert(msg);
+                
+                // Clear giỏ và reload dữ liệu
+                scanCart = [];
+                renderCart();
+                await loadDataFromSheets();
+                focusQRInput();
+                
             } catch (error) {
                 setSyncStatus('error', '❌ Lỗi');
                 alert('Lỗi: ' + error.message);
             } finally {
                 showLoading(false);
             }
-        }
-
-        function resetTransactionForm() {
-            document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
-            document.getElementById('txQuantity').value = '';
-            document.getElementById('txComment').value = '';
-            document.getElementById('qrInput').value = '';
-            updateScoreCard();
         }
 
         // ===== TAB TỒN ĐẦU KỲ =====
@@ -1176,15 +1356,11 @@
 
         function getFormValuesForTem() {
             const material = document.getElementById('temMaterial').value;
-            // Tìm tên từ master list (fallback về hardcoded MATERIAL_NAMES nếu chưa có master)
-            let tenNVL = '';
+            // Tìm tên từ master list (nếu Master chưa load được thì fallback về mã)
+            let tenNVL = material;
             const foundInMaster = masterMaterialsList.find(m => m.ma === material);
             if (foundInMaster) {
                 tenNVL = foundInMaster.ten;
-            } else if (MATERIAL_NAMES[material]) {
-                tenNVL = MATERIAL_NAMES[material];
-            } else {
-                tenNVL = material;
             }
             return {
                 material: material,
@@ -1214,10 +1390,10 @@
                 statusEl.style.color = 'var(--success)';
             } catch (error) {
                 console.error('Load master error:', error);
-                // Fallback: dùng MATERIALS list hardcoded
-                masterMaterialsList = MATERIALS.map(m => ({ ma: m, ten: MATERIAL_NAMES[m] || m }));
+                // Không có Master → không tạo tem được, cảnh báo rõ
+                masterMaterialsList = [];
                 populateTemMaterialDropdown();
-                statusEl.textContent = '(⚠ dùng list mặc định, không đọc được KHSX)';
+                statusEl.textContent = '(❌ Không đọc được Master từ KHSX. Kiểm tra quyền hạn Apps Script hoặc mở KHSX file rồi thử lại.)';
                 statusEl.style.color = 'var(--danger)';
             }
         }
@@ -1775,6 +1951,7 @@
             if (tabName === 'charts') setTimeout(() => updatePlanChart(), 100);
             if (tabName === 'plan-nhap') renderPlanNhapTable();
             if (tabName === 'tem-nvl') { rerenderTemQtyTable(); updateTemPreview(); }
+            if (tabName === 'qr-input') setTimeout(() => focusQRInput(), 100);
         }
 
         init();
