@@ -605,7 +605,61 @@
             // Load master data cho tab In Tem (async, không chờ)
             loadMasterMaterialsForTem();
             renderCart(); // Init giỏ trống
+            // Bật auto-sync mỗi 5 phút
+            startAutoSync();
         }
+
+        // ===== AUTO-SYNC MỖI 5 PHÚT =====
+        const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 phút
+        let autoSyncTimer = null;
+        let lastSyncTime = Date.now();
+
+        function startAutoSync() {
+            if (autoSyncTimer) clearInterval(autoSyncTimer);
+            autoSyncTimer = setInterval(checkAndAutoSync, 60 * 1000); // Check mỗi 1 phút
+            updateAutoSyncStatusDisplay();
+        }
+
+        async function checkAndAutoSync() {
+            // Chỉ sync khi tab đang visible (tiết kiệm request khi user chuyển tab)
+            if (document.hidden) return;
+
+            const now = Date.now();
+            if (now - lastSyncTime < AUTO_SYNC_INTERVAL_MS) return;
+
+            // Không sync khi user đang có việc quan trọng dở dang:
+            // - đang có pallet trong giỏ (chưa ghi nhận)
+            // - đang có sửa đổi kế hoạch nhập chưa lưu
+            // - đang có tem in dở
+            if (scanCart && scanCart.length > 0) {
+                console.log('[AutoSync] Bỏ qua: còn ' + scanCart.length + ' pallet trong giỏ');
+                return;
+            }
+            if (typeof planNhapChanges === 'object' && Object.keys(planNhapChanges).length > 0) {
+                console.log('[AutoSync] Bỏ qua: có ' + Object.keys(planNhapChanges).length + ' thay đổi kế hoạch nhập chưa lưu');
+                return;
+            }
+
+            // OK, sync
+            console.log('[AutoSync] Đang đồng bộ...');
+            lastSyncTime = now;
+            await loadDataFromSheets();
+        }
+
+        function updateAutoSyncStatusDisplay() {
+            // Cập nhật tooltip/text cho nút sync để user biết tự đồng bộ đang bật
+            const btns = document.querySelectorAll('button[onclick*="loadDataFromSheets"]');
+            btns.forEach(b => {
+                b.title = 'Tự đồng bộ mỗi 5 phút. Nhấn để đồng bộ ngay.';
+            });
+        }
+
+        // Khi tab quay lại visible sau khi bị ẩn: check sync ngay nếu quá thời hạn
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                checkAndAutoSync();
+            }
+        });
 
         // ===== SYNC STATUS =====
         function setSyncStatus(status, message) {
@@ -642,6 +696,7 @@
                 if (planChart) updatePlanChart();
 
                 setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
+                lastSyncTime = Date.now(); // Reset timer auto-sync
                 console.log('Loaded:', allData);
             } catch (error) {
                 console.error('Load error:', error);
