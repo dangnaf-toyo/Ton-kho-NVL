@@ -6,6 +6,7 @@
     <title>Dashboard Quản Lý Tồn Kho NVL - TOYOTAKI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -95,6 +96,80 @@
         .plan-nhap-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.8rem; font-size: 0.8rem; color: var(--gray); }
         .plan-nhap-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
         .plan-nhap-legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid #ccc; }
+
+        /* ============ CAMERA QR SCANNER ============ */
+        .camera-scanner-wrapper {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .camera-scanner-wrapper.active { display: block; }
+        #cameraReader {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #000;
+        }
+        #cameraReader video {
+            width: 100% !important;
+            border-radius: 6px;
+        }
+        .camera-controls {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+        .camera-status {
+            text-align: center;
+            color: white;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .camera-status.scanning { color: #4CAF50; }
+        .camera-status.error { color: #f44336; }
+        .camera-select {
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: white;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+        .btn-camera {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .btn-camera.start { background: #4CAF50; color: white; }
+        .btn-camera.start:hover { background: #43A047; }
+        .btn-camera.stop { background: #f44336; color: white; }
+        .btn-camera.stop:hover { background: #E53935; }
+        .btn-camera.flip { background: #2196F3; color: white; }
+        .btn-camera.flip:hover { background: #1E88E5; }
+        /* Ẩn/hiện các phần tử html5-qrcode không cần thiết */
+        #cameraReader__dashboard { display: none !important; }
+        #cameraReader__scan_region img { display: none !important; }
+        /* Recent scan feedback */
+        @keyframes flashSuccess {
+            0% { background: rgba(76, 175, 80, 0); }
+            50% { background: rgba(76, 175, 80, 0.3); }
+            100% { background: rgba(76, 175, 80, 0); }
+        }
+        .camera-scanner-wrapper.flash #cameraReader {
+            animation: flashSuccess 0.4s ease-out;
+        }
 
         /* ============ TEM NVL 70x100mm ============ */
         .tem-preview-container { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem; }
@@ -330,7 +405,24 @@
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label>Quét QR Code (hoặc gõ Tag No + Enter)</label>
-                        <input type="text" id="qrScanInput" placeholder="Đưa mã QR vào camera hoặc gõ Tag No..." autofocus onkeydown="onQRScanKey(event)">
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="qrScanInput" placeholder="Đưa mã QR vào camera hoặc gõ Tag No..." autofocus onkeydown="onQRScanKey(event)" style="flex: 1;">
+                            <button class="btn-primary" type="button" onclick="toggleCameraScanner()" id="btnToggleCamera" style="padding: 0.75rem 1rem; white-space: nowrap;">📷 Bật Camera</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Camera QR Scanner -->
+                <div class="camera-scanner-wrapper" id="cameraScannerWrapper">
+                    <div id="cameraReader"></div>
+                    <div class="camera-status scanning" id="cameraStatus">📷 Đưa mã QR vào khung hình...</div>
+                    <div class="camera-controls">
+                        <select class="camera-select" id="cameraSelect" onchange="onCameraSelectChange()"></select>
+                        <button class="btn-camera flip" type="button" onclick="flipCamera()" title="Đảo camera trước/sau">🔄 Đảo Camera</button>
+                        <button class="btn-camera stop" type="button" onclick="stopCameraScanner()">⏹ Tắt Camera</button>
+                    </div>
+                    <div style="text-align: center; color: #aaa; font-size: 0.8rem; margin-top: 0.6rem;">
+                        💡 Quét thành công là beep + flash xanh. Camera tiếp tục quét pallet kế tiếp.
                     </div>
                 </div>
 
@@ -978,6 +1070,211 @@
 
         function focusQRInput() {
             document.getElementById('qrScanInput').focus();
+        }
+
+        // ===== CAMERA QR SCANNER =====
+        let html5QrScanner = null;
+        let cameraDevices = [];
+        let currentCameraIdx = 0;
+        let lastCameraScanTime = 0;
+        let lastCameraScanText = '';
+        const CAMERA_SCAN_COOLDOWN_MS = 1500; // Chống quét trùng liên tiếp
+
+        async function toggleCameraScanner() {
+            const wrapper = document.getElementById('cameraScannerWrapper');
+            if (wrapper.classList.contains('active')) {
+                await stopCameraScanner();
+            } else {
+                await startCameraScanner();
+            }
+        }
+
+        async function startCameraScanner() {
+            const wrapper = document.getElementById('cameraScannerWrapper');
+            const btn = document.getElementById('btnToggleCamera');
+            const status = document.getElementById('cameraStatus');
+            
+            wrapper.classList.add('active');
+            status.textContent = '⏳ Đang khởi động camera...';
+            status.className = 'camera-status';
+            
+            try {
+                // Kiểm tra hỗ trợ getUserMedia
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Browser không hỗ trợ camera. Hãy dùng Chrome/Safari mới nhất.');
+                }
+                
+                // Lấy danh sách camera
+                cameraDevices = await Html5Qrcode.getCameras();
+                if (!cameraDevices || cameraDevices.length === 0) {
+                    throw new Error('Không tìm thấy camera nào trên thiết bị');
+                }
+                
+                // Populate dropdown chọn camera
+                const cameraSelect = document.getElementById('cameraSelect');
+                cameraSelect.innerHTML = '';
+                cameraDevices.forEach((cam, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = cam.label || `Camera ${idx + 1}`;
+                    cameraSelect.appendChild(opt);
+                });
+                
+                // Chọn camera sau (rear) nếu có (thường label chứa "back" hoặc "rear")
+                const rearIdx = cameraDevices.findIndex(c => 
+                    /back|rear|environment/i.test(c.label || '')
+                );
+                currentCameraIdx = rearIdx !== -1 ? rearIdx : cameraDevices.length - 1;
+                cameraSelect.value = currentCameraIdx;
+                
+                await startCameraWithDevice(cameraDevices[currentCameraIdx].id);
+                
+                btn.textContent = '📷 Đang Quét...';
+                btn.classList.remove('btn-primary');
+                btn.style.background = '#f44336';
+                btn.style.color = 'white';
+                
+                status.textContent = '📷 Đưa mã QR vào khung hình...';
+                status.className = 'camera-status scanning';
+                
+            } catch (error) {
+                console.error('Camera error:', error);
+                status.textContent = '❌ ' + error.message;
+                status.className = 'camera-status error';
+                
+                // Nếu là lỗi permission → hướng dẫn
+                if (error.name === 'NotAllowedError' || /permission|denied/i.test(error.message)) {
+                    alert('❌ Bạn chưa cho phép truy cập camera.\n\n' +
+                          'Cách bật:\n' +
+                          '• Chrome/Edge: nhấn icon 🔒 ở thanh URL → Site settings → Camera → Allow\n' +
+                          '• Safari (iOS): Settings > Safari > Camera > Allow\n' +
+                          '• Sau đó reload trang và thử lại');
+                }
+            }
+        }
+
+        async function startCameraWithDevice(deviceId) {
+            if (html5QrScanner) {
+                try { await html5QrScanner.stop(); } catch (e) {}
+                html5QrScanner = null;
+            }
+            
+            html5QrScanner = new Html5Qrcode("cameraReader");
+            
+            const config = {
+                fps: 10,
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    // qrbox chiếm 70% chiều ngắn nhất
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    const size = Math.floor(minEdge * 0.7);
+                    return { width: size, height: size };
+                },
+                aspectRatio: 1.333,
+                disableFlip: false
+            };
+            
+            await html5QrScanner.start(
+                deviceId,
+                config,
+                onCameraQRSuccess,
+                onCameraQRError
+            );
+        }
+
+        function onCameraQRSuccess(decodedText, decodedResult) {
+            const now = Date.now();
+            
+            // Chống quét trùng: cùng text trong vòng cooldown → bỏ qua
+            if (decodedText === lastCameraScanText && (now - lastCameraScanTime) < CAMERA_SCAN_COOLDOWN_MS) {
+                return;
+            }
+            lastCameraScanText = decodedText;
+            lastCameraScanTime = now;
+            
+            // Feedback flash + beep
+            const wrapper = document.getElementById('cameraScannerWrapper');
+            wrapper.classList.add('flash');
+            setTimeout(() => wrapper.classList.remove('flash'), 400);
+            
+            const status = document.getElementById('cameraStatus');
+            status.textContent = '✓ Đã quét: ' + (decodedText.split('>')[0] || decodedText).substring(0, 30);
+            status.className = 'camera-status scanning';
+            
+            // Thêm vào giỏ (dùng lại hàm sẵn có)
+            addPalletToCart(decodedText);
+            
+            // Sau 1s, đổi lại thông báo mặc định
+            setTimeout(() => {
+                status.textContent = '📷 Đưa mã QR tiếp theo...';
+            }, 1000);
+        }
+
+        function onCameraQRError(errorMsg) {
+            // Được gọi liên tục khi không tìm thấy QR — không cần log
+            // (chỉ log lỗi thật ngoài decode)
+        }
+
+        async function stopCameraScanner() {
+            if (html5QrScanner) {
+                try {
+                    await html5QrScanner.stop();
+                    await html5QrScanner.clear();
+                } catch (e) {
+                    console.warn('Stop camera error:', e);
+                }
+                html5QrScanner = null;
+            }
+            
+            const wrapper = document.getElementById('cameraScannerWrapper');
+            wrapper.classList.remove('active');
+            
+            const btn = document.getElementById('btnToggleCamera');
+            btn.textContent = '📷 Bật Camera';
+            btn.classList.add('btn-primary');
+            btn.style.background = '';
+            btn.style.color = '';
+        }
+
+        async function flipCamera() {
+            if (cameraDevices.length < 2) {
+                alert('Thiết bị chỉ có 1 camera');
+                return;
+            }
+            currentCameraIdx = (currentCameraIdx + 1) % cameraDevices.length;
+            document.getElementById('cameraSelect').value = currentCameraIdx;
+            const status = document.getElementById('cameraStatus');
+            status.textContent = '⏳ Đang chuyển camera...';
+            try {
+                await startCameraWithDevice(cameraDevices[currentCameraIdx].id);
+                status.textContent = '📷 Đưa mã QR vào khung hình...';
+                status.className = 'camera-status scanning';
+            } catch (e) {
+                status.textContent = '❌ Lỗi chuyển camera: ' + e.message;
+                status.className = 'camera-status error';
+            }
+        }
+
+        async function onCameraSelectChange() {
+            const idx = parseInt(document.getElementById('cameraSelect').value);
+            if (isNaN(idx) || idx === currentCameraIdx || !cameraDevices[idx]) return;
+            currentCameraIdx = idx;
+            const status = document.getElementById('cameraStatus');
+            status.textContent = '⏳ Đang chuyển camera...';
+            try {
+                await startCameraWithDevice(cameraDevices[idx].id);
+                status.textContent = '📷 Đưa mã QR vào khung hình...';
+                status.className = 'camera-status scanning';
+            } catch (e) {
+                status.textContent = '❌ Lỗi: ' + e.message;
+                status.className = 'camera-status error';
+            }
+        }
+
+        // Tự tắt camera khi chuyển sang tab khác (tiết kiệm pin)
+        function stopCameraOnTabSwitch(newTab) {
+            if (newTab !== 'qr-input' && html5QrScanner) {
+                stopCameraScanner();
+            }
         }
 
         function onCartTypeChange() {
@@ -2288,6 +2585,8 @@
             if (tabName === 'plan-nhap') renderPlanNhapTable();
             if (tabName === 'tem-nvl') { rerenderTemQtyTable(); updateTemPreview(); }
             if (tabName === 'qr-input') setTimeout(() => focusQRInput(), 100);
+            // Tự tắt camera khi chuyển sang tab khác
+            stopCameraOnTabSwitch(tabName);
         }
 
         init();
