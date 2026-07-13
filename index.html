@@ -6,7 +6,7 @@
     <title>Quản Lý Tồn Kho Nguyên Vật Liệu - TOYOTAKI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -1301,6 +1301,14 @@
             updateFsCartCount();
             document.body.style.overflow = 'hidden'; // Chặn scroll trang gốc
             
+            // Cảnh báo nếu không có engine QR nào load được
+            if (!fsBarcodeDetector && typeof jsQR === 'undefined') {
+                showFsLastScan('❌ Lỗi thư viện QR', 
+                    'Không load được thư viện đọc QR (jsQR). Kiểm tra kết nối mạng và reload trang.', 
+                    'error');
+                return;
+            }
+            
             try {
                 await fsStartCamera(fsCurrentFacingMode);
                 startFsScanLoop();
@@ -1360,62 +1368,100 @@
             if (fsScanRunning) return;
             fsScanRunning = true;
             
-            // Chuẩn bị canvas cho jsQR fallback
+            // Chuẩn bị canvas cho jsQR và BarcodeDetector
             if (!fsCanvas) {
                 fsCanvas = document.createElement('canvas');
                 fsCanvasCtx = fsCanvas.getContext('2d', { willReadFrequently: true });
             }
             
             const video = document.getElementById('fsVideo');
-            const container = document.getElementById('fsVideoContainer');
+            
+            // Debug: log môi trường scan
+            console.log('[FS-Scanner] Bắt đầu scan loop');
+            console.log('[FS-Scanner] BarcodeDetector:', fsBarcodeDetector ? 'CÓ' : 'KHÔNG');
+            console.log('[FS-Scanner] jsQR:', typeof jsQR !== 'undefined' ? 'CÓ' : 'KHÔNG');
+            
+            let frameCount = 0;
+            let lastLogTime = Date.now();
             
             async function scanFrame() {
                 if (!fsScanRunning) return;
                 
-                if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+                if (video.readyState === 4 && video.videoWidth > 0 && video.videoHeight > 0) {
                     let decodedText = null;
+                    let engine = '';
                     
-                    // Method 1: BarcodeDetector API (fast, native)
-                    if (fsBarcodeDetector) {
-                        try {
-                            const results = await fsBarcodeDetector.detect(video);
-                            if (results && results.length > 0) {
-                                decodedText = results[0].rawValue;
-                            }
-                        } catch (e) { /* fall through to jsQR */ }
+                    // Downscale toàn bộ video frame về max 640px cạnh dài
+                    // (KHÔNG crop giữa vì QR có thể nằm bất kỳ đâu trong khung hình)
+                    const maxDim = 640;
+                    const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+                    const targetW = Math.floor(video.videoWidth * scale);
+                    const targetH = Math.floor(video.videoHeight * scale);
+                    
+                    try {
+                        fsCanvas.width = targetW;
+                        fsCanvas.height = targetH;
+                        fsCanvasCtx.drawImage(video, 0, 0, targetW, targetH);
+                    } catch (e) {
+                        console.warn('[FS-Scanner] drawImage error:', e);
                     }
                     
-                    // Method 2: jsQR fallback (nếu BarcodeDetector không có/lỗi)
-                    if (!decodedText && typeof jsQR !== 'undefined') {
-                        // Downsample: chỉ scan 400x400 ở giữa khung hình → nhanh hơn nhiều
-                        const size = 400;
-                        const sx = Math.max(0, (video.videoWidth - size) / 2);
-                        const sy = Math.max(0, (video.videoHeight - size) / 2);
-                        const sw = Math.min(size, video.videoWidth);
-                        const sh = Math.min(size, video.videoHeight);
-                        
-                        fsCanvas.width = sw;
-                        fsCanvas.height = sh;
-                        fsCanvasCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
-                        
+                    // METHOD 1: BarcodeDetector API — dùng CANVAS (không dùng video trực tiếp)
+                    // vì detect(video) có thể fail trên 1 số browser
+                    if (fsBarcodeDetector && !decodedText) {
                         try {
-                            const imgData = fsCanvasCtx.getImageData(0, 0, sw, sh);
+                            const results = await fsBarcodeDetector.detect(fsCanvas);
+                            if (results && results.length > 0 && results[0].rawValue) {
+                                decodedText = results[0].rawValue;
+                                engine = 'BarcodeDetector';
+                            }
+                        } catch (e) {
+                            console.warn('[FS-Scanner] BarcodeDetector error:', e);
+                            // Nếu lỗi liên tục → tắt để chỉ dùng jsQR
+                            fsBarcodeDetector = null;
+                            console.warn('[FS-Scanner] Đã tắt BarcodeDetector, dùng jsQR');
+                        }
+                    }
+                    
+                    // METHOD 2: jsQR fallback — luôn dùng attemptBoth để đọc được cả QR đen/trắng
+                    if (!decodedText && typeof jsQR !== 'undefined') {
+                        try {
+                            const imgData = fsCanvasCtx.getImageData(0, 0, targetW, targetH);
                             const code = jsQR(imgData.data, imgData.width, imgData.height, {
-                                inversionAttempts: 'dontInvert'
+                                inversionAttempts: 'attemptBoth'  // đọc QR cả đen/trắng và trắng/đen
                             });
                             if (code && code.data) {
                                 decodedText = code.data;
+                                engine = 'jsQR';
                             }
-                        } catch (e) { /* ignore */ }
+                        } catch (e) {
+                            console.warn('[FS-Scanner] jsQR error:', e);
+                        }
+                    }
+                    
+                    // Log fps mỗi giây để debug
+                    frameCount++;
+                    const now = Date.now();
+                    if (now - lastLogTime >= 3000) {
+                        console.log(`[FS-Scanner] FPS: ${(frameCount * 1000 / (now - lastLogTime)).toFixed(1)} | Video: ${video.videoWidth}x${video.videoHeight} | Scan: ${targetW}x${targetH}`);
+                        frameCount = 0;
+                        lastLogTime = now;
                     }
                     
                     if (decodedText) {
+                        console.log('[FS-Scanner] ✓ QR detected by', engine, ':', decodedText.substring(0, 60));
                         handleFsScanSuccess(decodedText);
                     }
                 }
                 
-                // Loop tiếp — 100ms là balance giữa CPU và tốc độ
-                if (fsScanRunning) setTimeout(scanFrame, 100);
+                // Loop với requestAnimationFrame nếu có, fallback setTimeout
+                if (fsScanRunning) {
+                    if (window.requestAnimationFrame) {
+                        requestAnimationFrame(scanFrame);
+                    } else {
+                        setTimeout(scanFrame, 50);
+                    }
+                }
             }
             
             scanFrame();
