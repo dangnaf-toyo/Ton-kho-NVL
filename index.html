@@ -749,7 +749,6 @@
                     <button class="btn-primary" onclick="savePlanNhap()">💾 Lưu Tất Cả Thay Đổi</button>
                     <button class="btn-secondary" onclick="resetPlanNhap()">⟲ Hủy Thay Đổi</button>
                     <button class="btn-secondary" onclick="loadDataFromSheets()">🔄 Tải Lại Từ Sheets</button>
-                    <button class="btn-secondary" onclick="recalcAllPlanStock()" title="Tính lại toàn bộ tồn dự kiến 30 ngày cho 7 mã, dựa trên Tồn đầu kỳ + Nhập - Tiêu hao">🧮 Tính Lại Tồn Kế Hoạch</button>
                     <span id="planNhapChangeCount" style="margin-left: auto; align-self: center; color: var(--warning); font-weight: 600; font-size: 0.9rem;"></span>
                 </div>
 
@@ -849,7 +848,7 @@
                 <span></span>
                 <div class="fs-scan-line"></div>
             </div>
-            <div class="fs-hint">Đưa mã QR vào khung hình</div>
+            <div class="fs-hint">Đưa QR gần camera 10-20cm • Chạm màn hình để lấy nét</div>
         </div>
         <div class="fs-scanner-footer">
             <div class="fs-last-scan" id="fsLastScan" style="display: none;">
@@ -1343,34 +1342,12 @@
                 fsStream = null;
             }
             
-            const constraints = {
-                video: {
-                    facingMode: { ideal: facingMode },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    // Advanced hints (không phải browser nào cũng hỗ trợ, browser sẽ tự bỏ qua)
-                    focusMode: { ideal: 'continuous' },
-                    resizeMode: 'none'
-                },
+            // ĐƠN GIẢN nhất giống app chuyển công đoạn - không advanced constraints
+            fsStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: facingMode } },
                 audio: false
-            };
-            
-            fsStream = await navigator.mediaDevices.getUserMedia(constraints);
+            });
             fsVideoTrack = fsStream.getVideoTracks()[0];
-            
-            // Áp advanced constraints sau khi có track (Chrome Android hỗ trợ)
-            try {
-                const capabilities = fsVideoTrack.getCapabilities ? fsVideoTrack.getCapabilities() : {};
-                const advanced = [];
-                if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-                    advanced.push({ focusMode: 'continuous' });
-                }
-                if (advanced.length > 0) {
-                    await fsVideoTrack.applyConstraints({ advanced: advanced });
-                }
-            } catch (e) {
-                console.log('[FS-Scanner] Không apply được advanced constraints:', e.message);
-            }
             
             const video = document.getElementById('fsVideo');
             video.srcObject = fsStream;
@@ -1462,7 +1439,7 @@
             if (fsScanRunning) return;
             fsScanRunning = true;
             
-            // Chuẩn bị canvas cho jsQR và BarcodeDetector
+            // Chuẩn bị canvas
             if (!fsCanvas) {
                 fsCanvas = document.createElement('canvas');
                 fsCanvasCtx = fsCanvas.getContext('2d', { willReadFrequently: true });
@@ -1470,92 +1447,38 @@
             
             const video = document.getElementById('fsVideo');
             
-            // Debug: log môi trường scan
-            console.log('[FS-Scanner] Bắt đầu scan loop');
-            console.log('[FS-Scanner] BarcodeDetector:', fsBarcodeDetector ? 'CÓ' : 'KHÔNG');
-            console.log('[FS-Scanner] jsQR:', typeof jsQR !== 'undefined' ? 'CÓ' : 'KHÔNG');
+            console.log('[FS-Scanner] Bắt đầu scan loop (jsQR dontInvert - style chuyển công đoạn)');
+            console.log('[FS-Scanner] jsQR available:', typeof jsQR !== 'undefined');
             
-            let frameCount = 0;
-            let lastLogTime = Date.now();
-            
-            async function scanFrame() {
+            // ĐƠN GIẢN nhất giống app chuyển công đoạn:
+            //   - Chỉ dùng jsQR (không BarcodeDetector)
+            //   - inversionAttempts: 'dontInvert' (nhanh, ổn định)
+            //   - Scan full frame (không crop)
+            //   - Loop bằng requestAnimationFrame
+            function scanFrame() {
                 if (!fsScanRunning) return;
                 
-                if (video.readyState === 4 && video.videoWidth > 0 && video.videoHeight > 0) {
-                    let decodedText = null;
-                    let engine = '';
-                    
-                    // Downscale toàn bộ video frame về max 640px cạnh dài
-                    // (KHÔNG crop giữa vì QR có thể nằm bất kỳ đâu trong khung hình)
-                    const maxDim = 640;
-                    const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
-                    const targetW = Math.floor(video.videoWidth * scale);
-                    const targetH = Math.floor(video.videoHeight * scale);
-                    
+                if (video.readyState === 4 && video.videoWidth > 0 && typeof jsQR !== 'undefined') {
                     try {
-                        fsCanvas.width = targetW;
-                        fsCanvas.height = targetH;
-                        fsCanvasCtx.drawImage(video, 0, 0, targetW, targetH);
+                        fsCanvas.width = video.videoWidth;
+                        fsCanvas.height = video.videoHeight;
+                        fsCanvasCtx.drawImage(video, 0, 0);
+                        
+                        const imgData = fsCanvasCtx.getImageData(0, 0, fsCanvas.width, fsCanvas.height);
+                        const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                            inversionAttempts: 'dontInvert'  // ← QUAN TRỌNG: nhanh & ổn định
+                        });
+                        
+                        if (code && code.data) {
+                            console.log('[FS-Scanner] ✓ QR:', code.data.substring(0, 60));
+                            handleFsScanSuccess(code.data);
+                        }
                     } catch (e) {
-                        console.warn('[FS-Scanner] drawImage error:', e);
-                    }
-                    
-                    // METHOD 1: BarcodeDetector API — dùng CANVAS (không dùng video trực tiếp)
-                    // vì detect(video) có thể fail trên 1 số browser
-                    if (fsBarcodeDetector && !decodedText) {
-                        try {
-                            const results = await fsBarcodeDetector.detect(fsCanvas);
-                            if (results && results.length > 0 && results[0].rawValue) {
-                                decodedText = results[0].rawValue;
-                                engine = 'BarcodeDetector';
-                            }
-                        } catch (e) {
-                            console.warn('[FS-Scanner] BarcodeDetector error:', e);
-                            // Nếu lỗi liên tục → tắt để chỉ dùng jsQR
-                            fsBarcodeDetector = null;
-                            console.warn('[FS-Scanner] Đã tắt BarcodeDetector, dùng jsQR');
-                        }
-                    }
-                    
-                    // METHOD 2: jsQR fallback — luôn dùng attemptBoth để đọc được cả QR đen/trắng
-                    if (!decodedText && typeof jsQR !== 'undefined') {
-                        try {
-                            const imgData = fsCanvasCtx.getImageData(0, 0, targetW, targetH);
-                            const code = jsQR(imgData.data, imgData.width, imgData.height, {
-                                inversionAttempts: 'attemptBoth'  // đọc QR cả đen/trắng và trắng/đen
-                            });
-                            if (code && code.data) {
-                                decodedText = code.data;
-                                engine = 'jsQR';
-                            }
-                        } catch (e) {
-                            console.warn('[FS-Scanner] jsQR error:', e);
-                        }
-                    }
-                    
-                    // Log fps mỗi giây để debug
-                    frameCount++;
-                    const now = Date.now();
-                    if (now - lastLogTime >= 3000) {
-                        console.log(`[FS-Scanner] FPS: ${(frameCount * 1000 / (now - lastLogTime)).toFixed(1)} | Video: ${video.videoWidth}x${video.videoHeight} | Scan: ${targetW}x${targetH}`);
-                        frameCount = 0;
-                        lastLogTime = now;
-                    }
-                    
-                    if (decodedText) {
-                        console.log('[FS-Scanner] ✓ QR detected by', engine, ':', decodedText.substring(0, 60));
-                        handleFsScanSuccess(decodedText);
+                        // Silent — có thể video chưa render xong
                     }
                 }
                 
-                // Loop với requestAnimationFrame nếu có, fallback setTimeout
-                if (fsScanRunning) {
-                    if (window.requestAnimationFrame) {
-                        requestAnimationFrame(scanFrame);
-                    } else {
-                        setTimeout(scanFrame, 50);
-                    }
-                }
+                if (fsScanRunning) requestAnimationFrame(scanFrame);
             }
             
             scanFrame();
@@ -2876,7 +2799,7 @@
                 return;
             }
 
-            if (!confirm(`Sẽ cập nhật kế hoạch nhập của ${codesToSave.length} mã NVL vào Google Sheet.\n\nTiếp tục?`)) {
+            if (!confirm(`Sẽ cập nhật kế hoạch nhập của ${codesToSave.length} mã NVL vào Google Sheet.\nTồn dự kiến 30 ngày cho tất cả 7 mã sẽ được tính lại tự động.\n\nTiếp tục?`)) {
                 return;
             }
 
@@ -2907,7 +2830,6 @@
                     const result = await response.json();
 
                     if (result.status === 'ok') {
-                        // Cập nhật local
                         if (allData.planDaily[code]) {
                             allData.planDaily[code].nhap = newNhap;
                         }
@@ -2922,14 +2844,23 @@
 
             planNhapChanges = {}; // Clear changes
 
-            // Refresh data để lấy tồn dự kiến mới (vì formula chỉ tính lại khi đọc lại)
+            // Sau khi lưu xong, tính lại tồn dự kiến cho TẤT CẢ 7 mã (không chỉ mã đã sửa)
+            // Đảm bảo tồn đồng bộ nếu user cũng đã sửa tiêu hao / tồn đầu kỳ trực tiếp trên Sheet
+            setSyncStatus('loading', '⏳ Đang tính lại tồn kế hoạch...');
+            try {
+                await fetch(GAS_URL + '?action=recalcAllPlanStock');
+            } catch (e) {
+                console.warn('Recalc failed (không nghiêm trọng):', e);
+            }
+
+            // Refresh data để hiển thị tồn dự kiến mới
             await loadDataFromSheets();
 
             showLoading(false);
 
             if (errorMessages.length === 0) {
                 setSyncStatus('ok', '✓ Đã lưu ' + new Date().toLocaleTimeString('vi-VN'));
-                alert(`✓ Đã lưu kế hoạch nhập của ${successCount} mã NVL.\n\nTồn dự kiến đã được tính lại theo formula trong Google Sheet.`);
+                alert(`✓ Đã lưu kế hoạch nhập của ${successCount} mã NVL.\n\nTồn dự kiến 30 ngày đã được tính lại tự động cho tất cả 7 mã.`);
             } else {
                 setSyncStatus('error', '❌ Một số lỗi');
                 alert(`Lưu ${successCount} mã thành công.\n\nLỗi:\n${errorMessages.join('\n')}`);
@@ -2941,38 +2872,6 @@
             if (confirm('Hủy tất cả thay đổi chưa lưu?')) {
                 planNhapChanges = {};
                 renderPlanNhapTable();
-            }
-        }
-
-        // Gọi API tính lại tồn kế hoạch cho tất cả 7 mã NVL
-        // Dùng khi user sửa Tồn đầu kỳ hoặc Tiêu hao trực tiếp trên Google Sheet
-        async function recalcAllPlanStock() {
-            if (Object.keys(planNhapChanges).length > 0) {
-                if (!confirm('Bạn có thay đổi chưa lưu. Có muốn hủy và tiếp tục tính lại tồn?')) return;
-                planNhapChanges = {};
-            }
-            if (!confirm('Tính lại tồn dự kiến 30 ngày cho 7 mã NVL?\n\nCông thức: Tồn(N) = Tồn(N-1) + Nhập(N) - Tiêu hao(N)\n\nDữ liệu tồn cũ sẽ bị ghi đè.')) return;
-
-            showLoading(true);
-            setSyncStatus('loading', '⏳ Đang tính lại...');
-            try {
-                const response = await fetch(GAS_URL + '?action=recalcAllPlanStock');
-                const result = await response.json();
-                if (result.status !== 'ok') throw new Error(result.message || 'Lỗi tính');
-
-                let msg = '✓ Đã tính lại tồn kế hoạch cho ' + result.results.length + ' mã NVL:\n\n';
-                result.results.forEach(r => {
-                    msg += `• ${r.material}: Đầu kỳ ${(r.tonDauKy/1000).toFixed(2)} tấn → Cuối kỳ ${(r.tonCuoiKy/1000).toFixed(2)} tấn\n`;
-                });
-                alert(msg);
-
-                await loadDataFromSheets();
-                setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
-            } catch (error) {
-                setSyncStatus('error', '❌ Lỗi');
-                alert('Lỗi: ' + error.message);
-            } finally {
-                showLoading(false);
             }
         }
 
