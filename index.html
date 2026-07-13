@@ -6,7 +6,14 @@
     <title>Quản Lý Tồn Kho Nguyên Vật Liệu - TOYOTAKI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-    <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+    <!-- jsQR: thư viện đọc QR — thử 2 CDN để đảm bảo load được -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script>
+        if (typeof jsQR === 'undefined') {
+            console.warn('jsQR chưa load từ jsdelivr, thử unpkg...');
+            document.write('<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"><\/script>');
+        }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -742,6 +749,7 @@
                     <button class="btn-primary" onclick="savePlanNhap()">💾 Lưu Tất Cả Thay Đổi</button>
                     <button class="btn-secondary" onclick="resetPlanNhap()">⟲ Hủy Thay Đổi</button>
                     <button class="btn-secondary" onclick="loadDataFromSheets()">🔄 Tải Lại Từ Sheets</button>
+                    <button class="btn-secondary" onclick="recalcAllPlanStock()" title="Tính lại toàn bộ tồn dự kiến 30 ngày cho 7 mã, dựa trên Tồn đầu kỳ + Nhập - Tiêu hao">🧮 Tính Lại Tồn Kế Hoạch</button>
                     <span id="planNhapChangeCount" style="margin-left: auto; align-self: center; color: var(--warning); font-weight: 600; font-size: 0.9rem;"></span>
                 </div>
 
@@ -830,7 +838,10 @@
                 <span>📷 Quét QR</span>
                 <span id="fsTypeBadge" class="type-badge out">XUẤT KHO</span>
             </div>
-            <button onclick="fsFlipCamera()" title="Đảo camera">🔄 Đảo</button>
+            <div style="display: flex; gap: 0.4rem;">
+                <button onclick="fsDebugScan()" title="Chụp 1 frame để test debug" style="background: #FF9800;">🔬 Test</button>
+                <button onclick="fsFlipCamera()" title="Đảo camera">🔄 Đảo</button>
+            </div>
         </div>
         <div class="fs-video-container" id="fsVideoContainer">
             <video id="fsVideo" autoplay playsinline muted></video>
@@ -1336,13 +1347,30 @@
                 video: {
                     facingMode: { ideal: facingMode },
                     width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    height: { ideal: 720 },
+                    // Advanced hints (không phải browser nào cũng hỗ trợ, browser sẽ tự bỏ qua)
+                    focusMode: { ideal: 'continuous' },
+                    resizeMode: 'none'
                 },
                 audio: false
             };
             
             fsStream = await navigator.mediaDevices.getUserMedia(constraints);
             fsVideoTrack = fsStream.getVideoTracks()[0];
+            
+            // Áp advanced constraints sau khi có track (Chrome Android hỗ trợ)
+            try {
+                const capabilities = fsVideoTrack.getCapabilities ? fsVideoTrack.getCapabilities() : {};
+                const advanced = [];
+                if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                    advanced.push({ focusMode: 'continuous' });
+                }
+                if (advanced.length > 0) {
+                    await fsVideoTrack.applyConstraints({ advanced: advanced });
+                }
+            } catch (e) {
+                console.log('[FS-Scanner] Không apply được advanced constraints:', e.message);
+            }
             
             const video = document.getElementById('fsVideo');
             video.srcObject = fsStream;
@@ -1362,6 +1390,72 @@
                     showFsLastScan('❌ Không đảo được camera', e.message, 'error');
                 }
             }
+        }
+        
+        // Debug function: chụp 1 frame hiện tại, thử decode và show kết quả chi tiết
+        async function fsDebugScan() {
+            const video = document.getElementById('fsVideo');
+            const info = [];
+            info.push('=== TEST QR DECODE ===');
+            info.push('Video ready state: ' + video.readyState + (video.readyState === 4 ? ' (OK)' : ' (CHƯA SẴN SÀNG)'));
+            info.push('Video size: ' + video.videoWidth + 'x' + video.videoHeight);
+            info.push('BarcodeDetector: ' + (fsBarcodeDetector ? 'CÓ' : 'KHÔNG'));
+            info.push('jsQR loaded: ' + (typeof jsQR !== 'undefined' ? 'CÓ' : 'KHÔNG'));
+            
+            if (!fsCanvas) {
+                fsCanvas = document.createElement('canvas');
+                fsCanvasCtx = fsCanvas.getContext('2d', { willReadFrequently: true });
+            }
+            
+            if (video.readyState !== 4 || video.videoWidth === 0) {
+                alert(info.join('\n'));
+                return;
+            }
+            
+            const maxDim = 640;
+            const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+            const targetW = Math.floor(video.videoWidth * scale);
+            const targetH = Math.floor(video.videoHeight * scale);
+            
+            fsCanvas.width = targetW;
+            fsCanvas.height = targetH;
+            fsCanvasCtx.drawImage(video, 0, 0, targetW, targetH);
+            info.push('Scan canvas: ' + targetW + 'x' + targetH);
+            
+            // Test BarcodeDetector
+            if (fsBarcodeDetector) {
+                try {
+                    const results = await fsBarcodeDetector.detect(fsCanvas);
+                    info.push('BarcodeDetector kết quả: ' + results.length + ' QR');
+                    if (results.length > 0) {
+                        info.push('  → ' + results[0].rawValue.substring(0, 100));
+                    }
+                } catch (e) {
+                    info.push('BarcodeDetector LỖI: ' + e.message);
+                }
+            }
+            
+            // Test jsQR
+            if (typeof jsQR !== 'undefined') {
+                try {
+                    const imgData = fsCanvasCtx.getImageData(0, 0, targetW, targetH);
+                    const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                        inversionAttempts: 'attemptBoth'
+                    });
+                    if (code && code.data) {
+                        info.push('jsQR kết quả: ' + code.data.substring(0, 100));
+                    } else {
+                        info.push('jsQR không tìm thấy QR trong frame');
+                        info.push('→ Hãy chỉnh: đưa QR sát camera hơn, giữ yên, ánh sáng đủ.');
+                    }
+                } catch (e) {
+                    info.push('jsQR LỖI: ' + e.message);
+                }
+            } else {
+                info.push('❌ jsQR chưa được load. Kiểm tra kết nối mạng, thử reload trang.');
+            }
+            
+            alert(info.join('\n'));
         }
         
         function startFsScanLoop() {
@@ -2847,6 +2941,38 @@
             if (confirm('Hủy tất cả thay đổi chưa lưu?')) {
                 planNhapChanges = {};
                 renderPlanNhapTable();
+            }
+        }
+
+        // Gọi API tính lại tồn kế hoạch cho tất cả 7 mã NVL
+        // Dùng khi user sửa Tồn đầu kỳ hoặc Tiêu hao trực tiếp trên Google Sheet
+        async function recalcAllPlanStock() {
+            if (Object.keys(planNhapChanges).length > 0) {
+                if (!confirm('Bạn có thay đổi chưa lưu. Có muốn hủy và tiếp tục tính lại tồn?')) return;
+                planNhapChanges = {};
+            }
+            if (!confirm('Tính lại tồn dự kiến 30 ngày cho 7 mã NVL?\n\nCông thức: Tồn(N) = Tồn(N-1) + Nhập(N) - Tiêu hao(N)\n\nDữ liệu tồn cũ sẽ bị ghi đè.')) return;
+
+            showLoading(true);
+            setSyncStatus('loading', '⏳ Đang tính lại...');
+            try {
+                const response = await fetch(GAS_URL + '?action=recalcAllPlanStock');
+                const result = await response.json();
+                if (result.status !== 'ok') throw new Error(result.message || 'Lỗi tính');
+
+                let msg = '✓ Đã tính lại tồn kế hoạch cho ' + result.results.length + ' mã NVL:\n\n';
+                result.results.forEach(r => {
+                    msg += `• ${r.material}: Đầu kỳ ${(r.tonDauKy/1000).toFixed(2)} tấn → Cuối kỳ ${(r.tonCuoiKy/1000).toFixed(2)} tấn\n`;
+                });
+                alert(msg);
+
+                await loadDataFromSheets();
+                setSyncStatus('ok', '✓ ' + new Date().toLocaleTimeString('vi-VN'));
+            } catch (error) {
+                setSyncStatus('error', '❌ Lỗi');
+                alert('Lỗi: ' + error.message);
+            } finally {
+                showLoading(false);
             }
         }
 
