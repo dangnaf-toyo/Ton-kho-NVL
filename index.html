@@ -1250,23 +1250,20 @@
         let scanCart = [];
         let pendingValidations = 0; // Số pallet đang validate background
 
-        // ===== FULLSCREEN QR SCANNER (chỉ dùng jsQR — giống Chuyen_cong_doan.html) =====
-        // Đơn giản, ổn định trên cả Android và iPhone, không phụ thuộc BarcodeDetector.
-        // Tối ưu: center-crop 70% + downscale + stability check + cooldown ngắn.
-        let fsStream = null;                // MediaStream đang chạy
-        let fsVideoTrack = null;            // Track camera hiện tại
-        let fsScanRunning = false;          // Có đang loop scan không
-        let fsCanvas = null;                // Canvas ẩn để jsQR đọc pixel
+        // ===== FULLSCREEN QR SCANNER — chỉ dùng jsQR, style Chuyen_cong_doan.html =====
+        // Nguyên tắc: getUserMedia() → drawImage vào canvas → jsQR giải mã → thêm vào giỏ.
+        // Không BarcodeDetector, không html5-qrcode, không stability check, không downscale.
+        // Tối ưu duy nhất: chỉ scan vùng giữa (crop 72%) để giảm số pixel jsQR phải xử lý.
+        let fsStream = null;                    // MediaStream đang chạy
+        let fsVideoTrack = null;                // Track camera hiện tại (dùng để đảo camera)
+        let fsScanRunning = false;              // Cờ loop
+        let fsCanvas = null;                    // Canvas ẩn để jsQR đọc pixel (được tái sử dụng)
         let fsCanvasCtx = null;
-        let fsCurrentFacingMode = 'environment';  // 'environment' (sau) | 'user' (trước)
-        let fsLastScanText = '';            // QR text vừa nhận vào giỏ (chống double-fire cùng 1 tem)
-        let fsLastScanTime = 0;             // Thời điểm chấp nhận cuối
-        let fsStableCandidate = '';         // QR đang chờ xác nhận ổn định
-        let fsStableCount = 0;              // Số frame liên tiếp thấy cùng 1 QR
-        const FS_SCAN_COOLDOWN_MS = 800;    // Khóa 800ms sau khi đọc xong 1 tem
-        const FS_STABLE_FRAMES = 2;         // Yêu cầu 2 frame liên tiếp trùng nội dung
-        const FS_SCAN_MAX_SIZE = 480;       // Downscale vùng scan xuống tối đa 480px cạnh
-        const FS_SCAN_CROP_RATIO = 0.70;    // Chỉ scan 70% giữa khung hình (khớp khung QR trên UI)
+        let fsCurrentFacingMode = 'environment';// 'environment' = camera sau, 'user' = trước
+        let fsLastScanText = '';                // QR text vừa xử lý xong (để chống double-fire)
+        let fsLastScanTime = 0;                 // Timestamp lần scan cuối
+        const FS_SCAN_COOLDOWN_MS = 800;        // Khóa 800ms sau mỗi lần đọc xong 1 tem
+        const FS_SCAN_CROP_RATIO = 0.72;        // Chỉ đọc 72% vùng giữa video (khớp khung QR)
 
         function focusQRInput() {
             document.getElementById('qrScanInput').focus();
@@ -1365,7 +1362,7 @@
             }
         }
         
-        // Debug function: chụp 1 frame hiện tại, thử decode và show kết quả chi tiết
+        // Debug function: chụp 1 frame hiện tại, thử decode 2 lần (full + crop) để xem đâu đọc được
         async function fsDebugScan() {
             const video = document.getElementById('fsVideo');
             const info = [];
@@ -1390,121 +1387,94 @@
                 return;
             }
 
-            // Dùng cùng cách crop + downscale như scan loop thật để test đúng ngữ cảnh
-            const src = fsComputeScanRegion(video);
-            fsCanvas.width = src.canvasSize;
-            fsCanvas.height = src.canvasSize;
-            fsCanvasCtx.drawImage(video,
-                src.cropX, src.cropY, src.cropSize, src.cropSize,
-                0, 0, src.canvasSize, src.canvasSize);
-            info.push('Scan canvas: ' + src.canvasSize + 'x' + src.canvasSize +
-                      ' (crop ' + src.cropSize + 'px giữa khung)');
-
+            // Test 1: full frame với attemptBoth (chậm nhưng đọc được nhiều QR nhất)
+            fsCanvas.width = video.videoWidth;
+            fsCanvas.height = video.videoHeight;
+            fsCanvasCtx.drawImage(video, 0, 0);
             try {
-                const imgData = fsCanvasCtx.getImageData(0, 0, src.canvasSize, src.canvasSize);
-                // Debug dùng 'attemptBoth' để tối đa cơ hội đọc (chậm hơn loop thật)
-                const code = jsQR(imgData.data, imgData.width, imgData.height, {
-                    inversionAttempts: 'attemptBoth'
-                });
-                if (code && code.data) {
-                    info.push('jsQR kết quả: ' + code.data.substring(0, 100));
-                } else {
-                    info.push('jsQR không tìm thấy QR trong frame');
-                    info.push('→ Đưa QR vào giữa khung, sát camera 10–20cm, giữ yên, ánh sáng đủ.');
-                }
-            } catch (e) {
-                info.push('jsQR LỖI: ' + e.message);
-            }
+                const img1 = fsCanvasCtx.getImageData(0, 0, fsCanvas.width, fsCanvas.height);
+                const code1 = jsQR(img1.data, img1.width, img1.height, { inversionAttempts: 'attemptBoth' });
+                info.push('[Full-frame + attemptBoth] ' +
+                    (code1 && code1.data ? '✓ ' + code1.data.substring(0, 80) : '✗ không thấy QR'));
+            } catch (e) { info.push('Full-frame LỖI: ' + e.message); }
 
-            alert(info.join('\n'));
-        }
-
-        // Tính vùng scan (center crop + downscale) — dùng chung cho loop và debug
-        function fsComputeScanRegion(video) {
-            const vw = video.videoWidth;
-            const vh = video.videoHeight;
+            // Test 2: center crop với dontInvert (giống loop thật)
+            const vw = video.videoWidth, vh = video.videoHeight;
             const side = Math.min(vw, vh);
-            const cropSize = Math.max(1, Math.floor(side * FS_SCAN_CROP_RATIO));
+            const cropSize = Math.floor(side * FS_SCAN_CROP_RATIO);
             const cropX = Math.floor((vw - cropSize) / 2);
             const cropY = Math.floor((vh - cropSize) / 2);
-            const scale = Math.min(1, FS_SCAN_MAX_SIZE / cropSize);
-            const canvasSize = Math.max(1, Math.floor(cropSize * scale));
-            return { cropX, cropY, cropSize, canvasSize };
+            fsCanvas.width = cropSize;
+            fsCanvas.height = cropSize;
+            fsCanvasCtx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, cropSize, cropSize);
+            try {
+                const img2 = fsCanvasCtx.getImageData(0, 0, cropSize, cropSize);
+                const code2 = jsQR(img2.data, img2.width, img2.height, { inversionAttempts: 'dontInvert' });
+                info.push('[Center-crop ' + cropSize + 'px + dontInvert] ' +
+                    (code2 && code2.data ? '✓ ' + code2.data.substring(0, 80) : '✗ không thấy QR'));
+            } catch (e) { info.push('Center-crop LỖI: ' + e.message); }
+
+            info.push('');
+            info.push('Hướng dẫn: đưa QR vào giữa khung, sát 10–20cm, giữ yên, ánh sáng đủ.');
+            alert(info.join('\n'));
         }
         
         function startFsScanLoop() {
             if (fsScanRunning) return;
             fsScanRunning = true;
 
-            // Chuẩn bị canvas
             if (!fsCanvas) {
                 fsCanvas = document.createElement('canvas');
                 fsCanvasCtx = fsCanvas.getContext('2d', { willReadFrequently: true });
             }
 
             const video = document.getElementById('fsVideo');
+            console.log('[FS-Scanner] Bắt đầu (jsQR + center-crop ' + FS_SCAN_CROP_RATIO + ')');
 
-            // Reset stability tracking mỗi lần start
-            fsStableCandidate = '';
-            fsStableCount = 0;
-
-            console.log('[FS-Scanner] Bắt đầu scan loop (jsQR, center-crop', FS_SCAN_CROP_RATIO, ', stable', FS_STABLE_FRAMES, 'frames)');
-
-            // Loop tối giản:
-            //   - Chỉ jsQR, inversionAttempts: 'dontInvert' (nhanh)
-            //   - Chỉ scan vùng giữa (70%) và downscale → giảm CPU
-            //   - Sau khi đọc 1 QR: kiểm tra ổn định qua 2 frame liên tiếp
-            //   - Đọc xong → cooldown 800ms rồi tiếp tục quét (camera KHÔNG tắt)
+            // Loop bám sát Chuyen_cong_doan.html:
+            //   - drawImage vào canvas (chỉ vùng giữa để tăng tốc)
+            //   - jsQR với inversionAttempts='dontInvert' (nhanh nhất)
+            //   - Đọc được → handleFsScanSuccess xử lý dedup + thêm giỏ
+            //   - KHÔNG dừng loop, KHÔNG tắt camera → tiếp tục quét tem tiếp theo
             function scanFrame() {
-                if (!fsScanRunning) return;
+                if (!fsScanRunning) { return; }
 
-                if (video.readyState === 4 && video.videoWidth > 0 && typeof jsQR !== 'undefined') {
-                    // Trong cooldown → bỏ qua giải mã, đỡ CPU
-                    const now = Date.now();
-                    if (now - fsLastScanTime < FS_SCAN_COOLDOWN_MS && fsLastScanText) {
-                        requestAnimationFrame(scanFrame);
-                        return;
-                    }
+                // Trong cooldown → bỏ qua giải mã, đỡ tải CPU
+                if (fsLastScanText && Date.now() - fsLastScanTime < FS_SCAN_COOLDOWN_MS) {
+                    requestAnimationFrame(scanFrame);
+                    return;
+                }
 
+                if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
                     try {
-                        const src = fsComputeScanRegion(video);
-                        fsCanvas.width = src.canvasSize;
-                        fsCanvas.height = src.canvasSize;
-                        fsCanvasCtx.drawImage(video,
-                            src.cropX, src.cropY, src.cropSize, src.cropSize,
-                            0, 0, src.canvasSize, src.canvasSize);
+                        // Chỉ scan vùng giữa 72% để jsQR xử lý ít pixel hơn
+                        const vw = video.videoWidth;
+                        const vh = video.videoHeight;
+                        const side = Math.min(vw, vh);
+                        const cropSize = Math.floor(side * FS_SCAN_CROP_RATIO);
+                        const cropX = Math.floor((vw - cropSize) / 2);
+                        const cropY = Math.floor((vh - cropSize) / 2);
 
-                        const imgData = fsCanvasCtx.getImageData(0, 0, src.canvasSize, src.canvasSize);
-                        const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                        fsCanvas.width = cropSize;
+                        fsCanvas.height = cropSize;
+                        fsCanvasCtx.drawImage(video,
+                            cropX, cropY, cropSize, cropSize,
+                            0, 0, cropSize, cropSize);
+
+                        const img = fsCanvasCtx.getImageData(0, 0, cropSize, cropSize);
+                        const code = jsQR(img.data, img.width, img.height, {
                             inversionAttempts: 'dontInvert'
                         });
 
                         if (code && code.data) {
-                            // Stability check: cần đọc cùng 1 QR ở FS_STABLE_FRAMES frame liên tiếp
-                            if (code.data === fsStableCandidate) {
-                                fsStableCount++;
-                                if (fsStableCount >= FS_STABLE_FRAMES) {
-                                    const decoded = code.data;
-                                    fsStableCandidate = '';
-                                    fsStableCount = 0;
-                                    console.log('[FS-Scanner] ✓ QR (stable):', decoded.substring(0, 60));
-                                    handleFsScanSuccess(decoded);
-                                }
-                            } else {
-                                fsStableCandidate = code.data;
-                                fsStableCount = 1;
-                            }
-                        } else {
-                            // Không thấy QR → reset stability (tránh gộp nhầm 2 QR khác nhau)
-                            fsStableCandidate = '';
-                            fsStableCount = 0;
+                            handleFsScanSuccess(code.data);
                         }
                     } catch (e) {
-                        // Silent — có thể video chưa render xong
+                        // Silent — video chưa sẵn sàng hoặc lỗi decode nhất thời
                     }
                 }
 
-                if (fsScanRunning) requestAnimationFrame(scanFrame);
+                requestAnimationFrame(scanFrame);
             }
 
             scanFrame();
@@ -1513,33 +1483,33 @@
         function handleFsScanSuccess(decodedText) {
             const now = Date.now();
 
-            // Chống double-fire cùng 1 QR liên tiếp (khi tem vẫn nằm trước camera)
+            // Cooldown check (double-fire khi cùng 1 tem vẫn nằm trước camera)
             if (decodedText === fsLastScanText && (now - fsLastScanTime) < FS_SCAN_COOLDOWN_MS) {
                 return;
             }
             fsLastScanText = decodedText;
             fsLastScanTime = now;
 
-            // Flash visual
+            // Flash khung xanh
             const container = document.getElementById('fsVideoContainer');
             container.classList.remove('flash');
-            void container.offsetWidth; // trigger reflow
+            void container.offsetWidth; // reflow để chạy lại animation
             container.classList.add('flash');
 
-            // Parse QR ngay
+            // Parse QR: "TagNo>Mã>Tên>Ngày>SL>ĐV" hoặc chỉ TagNo
             const parsed = parseQRContent(decodedText);
 
-            // Check trùng trong giỏ (dựa vào tagNo) — CAMERA VẪN CHẠY, chỉ báo
+            // Trùng trong giỏ → beep thấp + rung đôi, camera VẪN CHẠY
             if (scanCart.find(x => x.tagNo === parsed.tagNo)) {
                 playBeep(400, 200);
-                if (navigator.vibrate) navigator.vibrate([60, 40, 60]);  // buzz đôi = duplicate
+                if (navigator.vibrate) { try { navigator.vibrate([60, 40, 60]); } catch (e) {} }
                 showFsLastScan('⚠ Tem đã được quét', parsed.tagNo, 'duplicate');
                 return;
             }
 
-            // Thêm vào giỏ NGAY (optimistic UI) — dùng lại logic sẵn có
+            // Thêm mới → beep cao + rung ngắn, camera VẪN CHẠY để quét tem tiếp theo
             playBeep(1000, 80);
-            if (navigator.vibrate) navigator.vibrate(50);  // buzz ngắn = thêm thành công
+            if (navigator.vibrate) { try { navigator.vibrate(50); } catch (e) {} }
             
             if (parsed.fromQR) {
                 scanCart.push({
@@ -1655,8 +1625,6 @@
             const video = document.getElementById('fsVideo');
             if (video) video.srcObject = null;
             fsLastScanText = '';
-            fsStableCandidate = '';
-            fsStableCount = 0;
         }
         
         // Tự tắt camera khi chuyển sang tab khác trong browser (tiết kiệm pin)
