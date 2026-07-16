@@ -1403,15 +1403,14 @@
                 return;
             }
             
-            const maxDim = 640;
-            const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
-            const targetW = Math.floor(video.videoWidth * scale);
-            const targetH = Math.floor(video.videoHeight * scale);
+            // KHÔNG downsample nữa - dùng full 1280x720 để jsQR có đủ pixel decode QR nhỏ
+            const targetW = video.videoWidth;
+            const targetH = video.videoHeight;
             
             fsCanvas.width = targetW;
             fsCanvas.height = targetH;
             fsCanvasCtx.drawImage(video, 0, 0, targetW, targetH);
-            info.push('Scan canvas: ' + targetW + 'x' + targetH);
+            info.push('Scan canvas: ' + targetW + 'x' + targetH + ' (full HD, không downsample)');
             
             // Test BarcodeDetector
             if (fsBarcodeDetector) {
@@ -1480,7 +1479,7 @@
                         
                         const imgData = fsCanvasCtx.getImageData(0, 0, fsCanvas.width, fsCanvas.height);
                         const code = jsQR(imgData.data, imgData.width, imgData.height, {
-                            inversionAttempts: 'dontInvert'  // ← QUAN TRỌNG: nhanh & ổn định
+                            inversionAttempts: 'attemptBoth'  // thử cả 2 chiều - bắt QR có bóng/phản chiếu
                         });
                         
                         if (code && code.data) {
